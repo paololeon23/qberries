@@ -46,28 +46,28 @@
                     <div class="input-group-triple">
                         <select id="traz-e">
                             <option value="" disabled selected>Etapa</option>
-                            <option value="E1">E1</option>
-                            <option value="E2">E2</option>
-                            <option value="E3">E3</option>
-                            <option value="E4">E4</option>
-                            <option value="E5">E5</option>
-                            <option value="E6">E6</option>
-                            <option value="E7">E7</option>
-                            <option value="E8">E8</option>
-                            <option value="E9">E9</option>
+                            <option value="E1">1</option>
+                            <option value="E2">2</option>
+                            <option value="E3">3</option>
+                            <option value="E4">4</option>
+                            <option value="E5">5</option>
+                            <option value="E6">6</option>
+                            <option value="E7">7</option>
+                            <option value="E8">8</option>
+                            <option value="E9">9</option>
                         </select>
 
                         <select id="traz-c">
                             <option value="" disabled selected>Campo</option>
-                            <option value="C1">C1</option>
-                            <option value="C2">C2</option>
-                            <option value="C3">C3</option>
-                            <option value="C4">C4</option>
-                            <option value="C5">C5</option>
-                            <option value="C6">C6</option>
-                            <option value="C7">C7</option>
-                            <option value="C8">C8</option>
-                            <option value="C9">C9</option>
+                            <option value="C1">1</option>
+                            <option value="C2">2</option>
+                            <option value="C3">3</option>
+                            <option value="C4">4</option>
+                            <option value="C5">5</option>
+                            <option value="C6">6</option>
+                            <option value="C7">7</option>
+                            <option value="C8">8</option>
+                            <option value="C9">9</option>
                         </select>
 
                         <input type="text" id="traz-libre" maxlength="3" placeholder="T4A" style="text-transform: uppercase;">
@@ -75,7 +75,7 @@
                 </div>
                     <div class="col">
                         <label><i data-lucide="file-text"></i> Guía Remisión Acopio</label>
-                        <input type="number" placeholder="200416">
+                        <input type="number" placeholder="200416"  maxlength="6">
                     </div>
                 </div>
 
@@ -86,18 +86,31 @@
                     </div>
                     <div class="col">
                         <label><i data-lucide="truck"></i> Placa Vehículo</label>
-                        <input type="text" placeholder="9578-PK">
+                        <input type="text" placeholder="9578-PK" maxlength="7" style="text-transform: uppercase;">
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col">
                         <label><i data-lucide="tag"></i> Rótulo de Muestra</label>
-                        <input type="text" placeholder="Ensayo 1">
+                        <div class="input-group-triple">
+                        <select id="traz-c">
+                            <option value="" disabled selected>Ensayo</option>
+                            <option value="Ensayo 1">1</option>
+                            <option value="Ensayo 2">2</option>
+                            <option value="Ensayo 3">3</option>
+                            <option value="Ensayo 4">4</option>
+                        </select>
+                        </div>
                     </div>
                     <div class="col">
-                        <label><i data-lucide="clock"></i> Hora Inicio General</label>
-                        <input type="time" value="07:15">
+                        <label><i data-lucide="clock"></i> Hora Inicio General (24h)</label>
+                        <input type="time" 
+                            id="hora-inicio" 
+                            value="07:15" 
+                            min="00:00" 
+                            max="23:59" 
+                            required>
                     </div>
                     <div class="col">
                         <label><i data-lucide="calendar-days"></i> Días Precosecha / N°</label>
