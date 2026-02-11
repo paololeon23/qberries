@@ -38,7 +38,7 @@ body {
     display: flex; 
     justify-content: space-between; 
     align-items: center; 
-    background: var(--primary); 
+    background: #ffffff; 
     color: white; 
 }
 
@@ -212,7 +212,7 @@ select:focus {
 #close-btn {
     background: none;
     border: none;
-    color: #fff;
+    color: #000000;
     cursor: pointer;
     transition: transform 0.2s ease;
 }
