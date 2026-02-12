@@ -39,8 +39,8 @@
                 </label>
                 <select id="tipo_medicion" class="select-modern" required>
                     <option value="" disabled selected>Seleccione para comenzar...</option>
-                    <option value="visual">Calibrado Visual (Campo)</option>
-                    <option value="acopio">Calibrado Acopio (Vacio)</option>
+                    <option value="visual">Calibrado Visual</option>
+                    <option value="acopio">Calibrado Acopio</option>
                 </select>
             </div>
 
@@ -87,7 +87,7 @@
                                 <option value="9">C9</option>
                             </select>
 
-                            <input type="text" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" id="reg_traz_libre" placeholder="T4A" maxlength="3" style="text-transform: uppercase;">
+                            <input type="text" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')"  id="reg_traz_libre" placeholder="T4A" maxlength="3" style="text-transform: uppercase;">
                         </div>
                     </div>
                     <div class="col">
@@ -245,6 +245,64 @@
                         </tr>
                     </thead>
                     <tbody id="tbody-tiempos"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="wrapper_temperaturas" class="collapsible-wrapper" style="display: none;">
+    <div class="collapsible-card">
+        <div class="card-header collapsible-toggle" data-target="body-temperaturas">
+            <div class="header-info">
+                <i data-lucide="thermometer"></i>
+                <span>TEMPERATURA MUESTRA (°C)</span>
+            </div>
+            <i data-lucide="chevron-down" class="chevron"></i>
+        </div>
+
+        <div class="card-body" id="body-temperaturas">
+            <div class="table-scroll">
+                <table class="table-field-style">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="b-left">N° CLAM</th>
+                            <th colspan="2">INICIO</th>
+                            <th colspan="2">TÉRMINO</th>
+                            <th colspan="2">LLEGADA ACOPIO</th>
+                            <th colspan="2">DESPACHO ACOPIO</th>
+                            <th rowspan="2" class="b-right">ACCION</th>
+                        </tr>
+                        <tr class="sub-header-icons">
+                            <th title="T° Ambiente"><i data-lucide="thermometer-sun"></i></th>
+                            <th title="T° Pulpa (Fruta)"><i data-lucide="cherry"></i></th>
+                            <th title="T° Ambiente"><i data-lucide="thermometer-sun"></i></th>
+                            <th title="T° Pulpa (Fruta)"><i data-lucide="cherry"></i></th>
+                            <th title="T° Ambiente"><i data-lucide="thermometer-sun"></i></th>
+                            <th title="T° Pulpa (Fruta)"><i data-lucide="cherry"></i></th>
+                            <th title="T° Ambiente"><i data-lucide="thermometer-sun"></i></th>
+                            <th title="T° Pulpa (Fruta)"><i data-lucide="cherry"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="input-table-row">
+                            <td class="b-left"><span id="next_clam_temp">1</span></td>
+                            <td><input type="number" id="temp_inicio_amb" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="temp_inicio_pul" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="temp_termino_amb" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="temp_termino_pul" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="temp_llegada_amb" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="temp_llegada_pul" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="temp_despacho_amb" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="temp_despacho_pul" placeholder="0.0" step="0.1"></td>
+                            <td class="b-right">
+                                <button type="button" id="btn-add-temperaturas" class="btn-mini-add">
+                                    <i data-lucide="plus"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tbody id="tbody-temperaturas"></tbody>
                 </table>
             </div>
         </div>

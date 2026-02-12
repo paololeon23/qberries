@@ -143,7 +143,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const wrappers = {
         visual: document.getElementById('wrapper_visual'),
         tiempos: document.getElementById('wrapper_tiempos'),
-        acopio: document.getElementById('wrapper_acopio')
+        acopio: document.getElementById('wrapper_acopio'),
+        temperaturas: document.getElementById('wrapper_temperaturas')
         // AGREGAR MÁS WRAPPERS AQUÍ:
         // observaciones: document.getElementById('wrapper_observaciones'),
         // fotos: document.getElementById('wrapper_fotos'),
@@ -178,6 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.value === 'visual') {
                 wrappers.visual.style.display = 'block';
                 wrappers.tiempos.style.display = 'block';
+                wrappers.temperaturas.style.display = 'block';
                 wrappers.acopio.style.display = 'none';
                 // AGREGAR MÁS WRAPPERS AQUÍ:
                 // wrappers.observaciones.style.display = 'block';
@@ -185,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (this.value === 'acopio') {
                 wrappers.visual.style.display = 'none';
                 wrappers.tiempos.style.display = 'none';
+                wrappers.temperaturas.style.display = 'block';
                 wrappers.acopio.style.display = 'block';
                 // AGREGAR MÁS WRAPPERS AQUÍ:
                 // wrappers.observaciones.style.display = 'none';
@@ -532,13 +535,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const p1 = document.getElementById('v_peso1').value;
             const p2 = document.getElementById('v_peso2').value;
 
-            if (jarra && p1 && p2) {
+            if (jarra) {
+
+                // Validamos p1 y p2: si están vacíos, ponemos un guion "-"
+                const peso1Final = p1 ? p1 : "0";
+                const peso2Final = p2 ? p2 : "0";
+
                 const tbody = document.getElementById('tbody-visual');
                 
                 const rowData = {
                     jarra: jarra,
-                    p1: p1,
-                    p2: p2
+                    p1: peso1Final,
+                    p2: peso2Final
                 };
                 
                 // Agregar al almacenamiento

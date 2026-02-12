@@ -507,3 +507,66 @@ label .lucide {
     padding: 5px;
     transition: transform 0.2s;
 }
+
+
+.table-field-style {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    margin-top: 10px;
+    /* Borde exterior fino */
+    border: 1px solid #ccc; 
+}
+
+.table-field-style th, 
+.table-field-style td {
+    border: 1px solid #19191a; /* Bordes internos muy tenues */
+    border-bottom: 1px solid #19191a; /* El border-bottom un poquito más marcado */
+    padding: 6px 2px;
+    text-align: center;
+    font-size: 0.85rem;
+}
+
+/* Encabezados más profesionales */
+.table-field-style thead th {
+    background-color: #f8f9fa;
+    color: #333;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+}
+
+/* Estilo para los inputs de temperatura */
+.input-table-row input {
+    width: 100%;
+    border: none;
+    background: #fdfdfd;
+    text-align: center;
+    padding: 4px 0;
+    outline: none;
+    font-weight: 500;
+    color: #2b78c5;
+}
+
+.input-table-row input:focus {
+    background: #eef6ff;
+}
+
+/* Botón "+" minimalista */
+.btn-mini-add {
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.btn-mini-add:hover {
+    background: #218838;
+}
