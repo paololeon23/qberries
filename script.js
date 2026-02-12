@@ -144,7 +144,15 @@ document.addEventListener('DOMContentLoaded', () => {
         visual: document.getElementById('wrapper_visual'),
         tiempos: document.getElementById('wrapper_tiempos'),
         acopio: document.getElementById('wrapper_acopio'),
-        temperaturas: document.getElementById('wrapper_temperaturas')
+        temperaturas: document.getElementById('wrapper_temperaturas'),
+        jarras: document.getElementById('wrapper_jarras'),
+
+        humedad: document.getElementById('wrapper_humedad'),
+        tempambiente: document.getElementById('wrapper_tempambiente'),
+        presionambiente: document.getElementById('wrapper_presionambiente'),
+        presionfruta: document.getElementById('wrapper_presionfruta'),
+        observacion: document.getElementById('wrapper_observacion')
+
         // AGREGAR MÁS WRAPPERS AQUÍ:
         // observaciones: document.getElementById('wrapper_observaciones'),
         // fotos: document.getElementById('wrapper_fotos'),
@@ -180,6 +188,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 wrappers.visual.style.display = 'block';
                 wrappers.tiempos.style.display = 'block';
                 wrappers.temperaturas.style.display = 'block';
+                wrappers.jarras.style.display = 'block';
+
+                // wrappers. de la segunda hoja visual
+                wrappers.humedad.style.display = 'block';
+                wrappers.tempambiente.style.display = 'block';
+                wrappers.presionambiente.style.display = 'block';
+                wrappers.presionfruta.style.display = 'block';
+                wrappers.observacion.style.display = 'block';
+
                 wrappers.acopio.style.display = 'none';
                 // AGREGAR MÁS WRAPPERS AQUÍ:
                 // wrappers.observaciones.style.display = 'block';
@@ -187,7 +204,15 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (this.value === 'acopio') {
                 wrappers.visual.style.display = 'none';
                 wrappers.tiempos.style.display = 'none';
-                wrappers.temperaturas.style.display = 'block';
+                wrappers.temperaturas.style.display = 'none';
+                wrappers.jarras.style.display = 'none';
+
+                wrappers.humedad.style.display = 'none';
+                wrappers.tempambiente.style.display = 'none';
+                wrappers.presionambiente.style.display = 'none';
+                wrappers.presionfruta.style.display = 'none';
+                wrappers.observacion.style.display = 'none';
+
                 wrappers.acopio.style.display = 'block';
                 // AGREGAR MÁS WRAPPERS AQUÍ:
                 // wrappers.observaciones.style.display = 'none';

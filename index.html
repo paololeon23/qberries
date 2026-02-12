@@ -150,40 +150,40 @@
         </div>
 
         <div class="card-body" id="body-visual">
-            <div class="input-entry-zone">
-                <div class="row-compact">
-                    <div class="col-input">
-                        <label>N° Jarra</label>
-                        <input type="number" id="v_jarra" placeholder="0" inputmode="numeric">
-                    </div>
-                    <div class="col-input">
-                        <label>Peso 1 (g)</label>
-                        <input type="number" id="v_peso1" step="0.1" placeholder="0.0" inputmode="decimal">
-                    </div>
-                    <div class="col-input">
-                        <label>Peso 2 (g)</label>
-                        <input type="number" id="v_peso2" step="0.1" placeholder="0.0" inputmode="decimal">
-                    </div>
-                    <div class="col-button-action">
-                        <button type="button" id="btn-add-visual" class="btn-add-pro">
-                            <i data-lucide="plus-circle"></i> Añadir
-                        </button>
-                    </div>
-                </div>
-            </div>
-
             <div class="table-scroll">
-                <table class="table-pro">
+                <table class="table-field-style">
                     <thead>
                         <tr>
-                            <th>N° CLAM</th>
-                            <th>N° JARRA</th>
-                            <th>PESO 1</th>
-                            <th>PESO 2</th>
-                            <th>ACCION</th>
+                            <th rowspan="2" class="b-left">N° CLAM</th>
+                            <th rowspan="2">N° JARRA</th>
+                            <th colspan="2">PESO BRUTO (G)</th>
+                            <th colspan="2">T° ACOPIO CAMPO</th>
+                            <th rowspan="2" class="b-right">ACCION</th>
+                        </tr>
+                        <tr class="sub-header-icons">
+                            <th title="Peso 1">P1</th>
+                            <th title="Peso 2">P2</th>
+                            <th title="Llegada Acopio"><i data-lucide="map-pin"></i><br>LLEG.</th>
+                            <th title="Despacho Acopio"><i data-lucide="navigation"></i><br>DESP.</th>
                         </tr>
                     </thead>
-                    <tbody id="tbody-visual"></tbody>
+                    <tbody>
+                        <tr class="input-table-row">
+                            <td class="b-left"><span id="next_clam_visual">0</span></td>
+                            <td><input type="number" id="v_jarra" placeholder="0" inputmode="numeric"></td>
+                            <td><input type="number" id="v_peso1" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="v_peso2" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="v_llegada_acopio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="v_despacho_acopio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td class="b-right">
+                                <button type="button" id="btn-add-visual" class="btn-mini-add">
+                                    <i data-lucide="plus"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tbody id="tbody-visual">
+                        </tbody>
                 </table>
             </div>
         </div>
@@ -201,50 +201,36 @@
         </div>
 
         <div class="card-body" id="body-tiempos">
-            <div class="input-entry-zone">
-                <div class="row-compact">
-                    <div class="col-input">
-                        <label>Inicio Cosecha</label>
-                        <input type="time" id="t_inicio_cosecha">
-                    </div>
-                    <div class="col-input">
-                        <label>Pérdida Peso</label>
-                        <input type="time" id="t_perdida_peso">
-                    </div>
-                    <div class="col-input">
-                        <label>Término Cosecha</label>
-                        <input type="time" id="t_termino_cosecha">
-                    </div>
-                    <div class="col-input">
-                        <label>Llegada Acopio</label>
-                        <input type="time" id="t_llegada_acopio">
-                    </div>
-                    <div class="col-input">
-                        <label>Despacho Acopio</label>
-                        <input type="time" id="t_despacho_acopio">
-                    </div>
-                    <div class="col-button-action">
-                        <button type="button" id="btn-add-tiempos" class="btn-add-pro">
-                            <i data-lucide="plus-circle"></i> Añadir
-                        </button>
-                    </div>
-                </div>
-            </div>
-
             <div class="table-scroll">
-                <table class="table-pro">
+                <table class="table-field-style">
                     <thead>
                         <tr>
-                            <th>N° CLAM</th>
-                            <th>INICIO COSECHA</th>
-                            <th>PÉRDIDA PESO</th>
-                            <th>TÉRMINO COSECHA</th>
-                            <th>LLEGADA ACOPIO</th>
-                            <th>DESPACHO ACOPIO</th>
-                            <th>ACCION</th>
+                            <th class="b-left">N° CLAM</th>
+                            <th title="Inicio Cosecha"><i data-lucide="play-circle"></i><br>INICIO</th>
+                            <th title="Pérdida de Peso"><i data-lucide="trending-down"></i><br>PÉRDIDA</th>
+                            <th title="Término Cosecha"><i data-lucide="stop-circle"></i><br>TÉRMINO</th>
+                            <th title="Llegada Acopio"><i data-lucide="truck"></i><br>LLEGADA</th>
+                            <th title="Despacho Acopio"><i data-lucide="log-out"></i><br>DESPACHO</th>
+                            <th class="b-right">ACCION</th>
                         </tr>
                     </thead>
-                    <tbody id="tbody-tiempos"></tbody>
+                    <tbody>
+                        <tr class="input-table-row">
+                            <td class="b-left"><span id="next_clam_tiempos">0</span></td>
+                            <td><input type="time" id="t_inicio_cosecha"></td>
+                            <td><input type="time" id="t_perdida_peso"></td>
+                            <td><input type="time" id="t_termino_cosecha"></td>
+                            <td><input type="time" id="t_llegada_acopio"></td>
+                            <td><input type="time" id="t_despacho_acopio"></td>
+                            <td class="b-right">
+                                <button type="button" id="btn-add-tiempos" class="btn-mini-add">
+                                    <i data-lucide="plus"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tbody id="tbody-tiempos">
+                        </tbody>
                 </table>
             </div>
         </div>
@@ -286,7 +272,7 @@
                     </thead>
                     <tbody>
                         <tr class="input-table-row">
-                            <td class="b-left"><span id="next_clam_temp">1</span></td>
+                            <td class="b-left"><span id="next_clam_temp">0</span></td>
                             <td><input type="number" id="temp_inicio_amb" placeholder="0.0" step="0.1"></td>
                             <td><input type="number" id="temp_inicio_pul" placeholder="0.0" step="0.1"></td>
                             <td><input type="number" id="temp_termino_amb" placeholder="0.0" step="0.1"></td>
@@ -308,6 +294,290 @@
         </div>
     </div>
 </div>
+
+<div id="wrapper_jarras" class="collapsible-wrapper" style="display: none;">
+    <div class="collapsible-card">
+        <div class="card-header collapsible-toggle" data-target="body-jarras">
+            <div class="header-info">
+                <i data-lucide="timer"></i>
+                <span>TIEMPO DE LLENADO DE JARRAS (HORA)</span>
+            </div>
+            <i data-lucide="chevron-down" class="chevron"></i>
+        </div>
+
+        <div class="card-body" id="body-jarras">
+            <div class="table-scroll">
+                <table class="table-field-style">
+                    <thead>
+                        <tr>
+                            <th class="b-left">N° CLAM</th> 
+                            <th>N° JARRA</th>
+                            <th>OBSERVACIÓN / TRASLADO</th>
+                            <th title="Hora Inicio"><i data-lucide="play"></i><br>INICIO</th>
+                            <th title="Hora Término"><i data-lucide="check-circle"></i><br>TÉRMINO</th>
+                            <th title="Tiempo Empleado"><i data-lucide="hourglass"></i><br>TOTAL</th>
+                            <th class="b-right">ACCION</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="input-table-row">
+                            <td class="b-left">
+                                <span id="next_clam_jarras">0</span> 
+                            </td>
+                            <td>
+                                <input type="number" id="j_num_jarra" placeholder="0" inputmode="numeric">
+                            </td>
+                            <td>
+                                <input type="text" id="j_observacion" placeholder="Ej: Cosecha/Traslado">
+                            </td>
+                            <td>
+                                <input type="time" id="j_hora_inicio">
+                            </td>
+                            <td>
+                                <input type="time" id="j_hora_termino">
+                            </td>
+                            <td>
+                                <span id="j_tiempo_empleado" style="font-weight: bold; color: #555;">0'</span>
+                            </td>
+                            <td class="b-right">
+                                <button type="button" id="btn-add-jarras" class="btn-mini-add">
+                                    <i data-lucide="plus"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tbody id="tbody-jarras">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="wrapper_humedad" class="collapsible-wrapper" style="display: none;">
+    <div class="collapsible-card">
+        <div class="card-header collapsible-toggle" data-target="body-humedad">
+            <div class="header-info">
+                <i data-lucide="droplets"></i>
+                <span>HUMEDAD RELATIVA (%)</span>
+            </div>
+            <i data-lucide="chevron-down" class="chevron"></i>
+        </div>
+
+        <div class="card-body" id="body-humedad">
+            <div class="table-scroll">
+                <table class="table-field-style">
+                    <thead>
+                        <tr>
+                            <th class="b-left">N° CLAM</th>
+                            <th title="Inicio Cosecha"><i data-lucide="cloud-rain"></i><br>INICIO</th>
+                            <th title="Término Cosecha"><i data-lucide="cloud-off"></i><br>TÉRMINO</th>
+                            <th title="Llegada Acopio"><i data-lucide="warehouse"></i><br>LLEGADA</th>
+                            <th title="Despacho Acopio"><i data-lucide="truck"></i><br>DESPACHO</th>
+                            <th class="b-right">ACCION</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="input-table-row">
+                            <td class="b-left"><span id="next_clam_humedad">0</span></td>
+                            <td><input type="number" id="h_inicio" placeholder="0%" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="h_termino" placeholder="0%" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="h_llegada" placeholder="0%" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="h_despacho" placeholder="0%" step="0.1" inputmode="decimal"></td>
+                            <td class="b-right">
+                                <button type="button" id="btn-add-humedad" class="btn-mini-add">
+                                    <i data-lucide="plus"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tbody id="tbody-humedad">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="wrapper_tempambiente" class="collapsible-wrapper" style="display: none;">
+    <div class="collapsible-card">
+        <div class="card-header collapsible-toggle" data-target="body-temp-ambiente">
+            <div class="header-info">
+                <i data-lucide="sun"></i>
+                <span>TEMPERATURA AMBIENTE (°C)</span>
+            </div>
+            <i data-lucide="chevron-down" class="chevron"></i>
+        </div>
+
+        <div class="card-body" id="body-temp-ambiente">
+            <div class="table-scroll">
+                <table class="table-field-style">
+                    <thead>
+                        <tr>
+                            <th class="b-left">N° CLAM</th>
+                            <th title="Inicio Cosecha"><i data-lucide="thermometer"></i><br>INICIO</th>
+                            <th title="Término Cosecha"><i data-lucide="thermometer-sun"></i><br>TÉRMINO</th>
+                            <th title="Llegada Acopio"><i data-lucide="map-pin"></i><br>LLEGADA</th>
+                            <th title="Despacho Acopio"><i data-lucide="send"></i><br>DESPACHO</th>
+                            <th class="b-right">ACCION</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="input-table-row">
+                            <td class="b-left"><span id="next_clam_temp_amb">0</span></td>
+                            <td><input type="number" id="ta_inicio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="ta_termino" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="ta_llegada" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="ta_despacho" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td class="b-right">
+                                <button type="button" id="btn-add-temp-amb" class="btn-mini-add">
+                                    <i data-lucide="plus"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tbody id="tbody-temp-ambiente">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="wrapper_presionambiente" class="collapsible-wrapper" style="display: none;">
+    <div class="collapsible-card">
+        <div class="card-header collapsible-toggle" data-target="body-presion">
+            <div class="header-info">
+                <i data-lucide="gauge"></i>
+                <span>PRESIÓN DE VAPOR AMBIENTE (Kpa)</span>
+            </div>
+            <i data-lucide="chevron-down" class="chevron"></i>
+        </div>
+
+        <div class="card-body" id="body-presion">
+            <div class="table-scroll">
+                <table class="table-field-style">
+                    <thead>
+                        <tr>
+                            <th class="b-left">N° CLAM</th>
+                            <th title="Inicio Cosecha"><i data-lucide="wind"></i><br>INICIO</th>
+                            <th title="Término Cosecha"><i data-lucide="wind"></i><br>TÉRMINO</th>
+                            <th title="Llegada Acopio"><i data-lucide="map-pin"></i><br>LLEGADA</th>
+                            <th title="Despacho Acopio"><i data-lucide="navigation-2"></i><br>DESPACHO</th>
+                            <th class="b-right">ACCION</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="input-table-row">
+                            <td class="b-left"><span id="next_clam_presion">0</span></td>
+                            <td><input type="number" id="pv_inicio" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="pv_termino" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="pv_llegada" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="pv_despacho" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td class="b-right">
+                                <button type="button" id="btn-add-presion" class="btn-mini-add">
+                                    <i data-lucide="plus"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tbody id="tbody-presion">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="wrapper_presionfruta" class="collapsible-wrapper" style="display: none;">
+    <div class="collapsible-card">
+        <div class="card-header collapsible-toggle" data-target="body-presion-fruta">
+            <div class="header-info">
+                <i data-lucide="cherry"></i>
+                <span>PRESIÓN DE VAPOR FRUTA (Kpa)</span>
+            </div>
+            <i data-lucide="chevron-down" class="chevron"></i>
+        </div>
+
+        <div class="card-body" id="body-presion-fruta">
+            <div class="table-scroll">
+                <table class="table-field-style">
+                    <thead>
+                        <tr>
+                            <th class="b-left">N° CLAM</th>
+                            <th title="Inicio Cosecha"><i data-lucide="play"></i><br>INICIO</th>
+                            <th title="Término Cosecha"><i data-lucide="stop-circle"></i><br>TÉRMINO</th>
+                            <th title="Llegada Acopio"><i data-lucide="map-pin"></i><br>LLEGADA</th>
+                            <th title="Despacho Acopio"><i data-lucide="truck"></i><br>DESPACHO</th>
+                            <th class="b-right">ACCION</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="input-table-row">
+                            <td class="b-left"><span id="next_clam_presion_fruta">0</span></td>
+                            <td><input type="number" id="pvf_inicio" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="pvf_termino" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="pvf_llegada" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="pvf_despacho" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td class="b-right">
+                                <button type="button" id="btn-add-presion-fruta" class="btn-mini-add">
+                                    <i data-lucide="plus"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tbody id="tbody-presion-fruta">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="wrapper_observacion" class="collapsible-wrapper" style="display: none;">
+    <div class="collapsible-card">
+        <div class="card-header collapsible-toggle" data-target="body-observacion">
+            <div class="header-info">
+                <i data-lucide="sticky-note"></i>
+                <span>OBSERVACIONES POR MUESTRA</span>
+            </div>
+            <i data-lucide="chevron-down" class="chevron"></i>
+        </div>
+
+        <div class="card-body" id="body-observacion">
+            <div class="table-scroll">
+                <table class="table-field-style">
+                    <thead>
+                        <tr>
+                            <th class="b-left" style="width: 80px;">N° CLAM</th>
+                            <th>DETALLE DE LA OBSERVACIÓN</th>
+                            <th class="b-right" style="width: 80px;">ACCION</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="input-table-row">
+                            <td class="b-left">
+                                <span id="next_clam_obs">0</span>
+                            </td>
+                            <td>
+                                <input type="text" id="v_observacion_texto" placeholder="Escriba aquí la nota de la muestra...">
+                            </td>
+                            <td class="b-right">
+                                <button type="button" id="btn-add-obs" class="btn-mini-add">
+                                    <i data-lucide="plus"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tbody id="tbody-observacion">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 
             <div id="wrapper_acopio" class="collapsible-wrapper" style="display: none;">
                 <div class="empty-state">
