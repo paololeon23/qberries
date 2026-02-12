@@ -498,3 +498,12 @@ label .lucide {
         width: 100%;
     }
 }
+
+.btn-edit-row {
+    background: none;
+    border: none;
+    color: #1429c4;
+    cursor: pointer;
+    padding: 5px;
+    transition: transform 0.2s;
+}
