@@ -29,6 +29,11 @@
         <header>
             <button id="menu-btn" class="menu-btn"><i data-lucide="menu"></i> Menú</button>
             <h1>MTTP ARÁNDANO</h1>
+            
+            <div id="network-status-container" class="status-card online">
+                <span id="status-dot">●</span>
+                <span id="status-text">En línea</span>
+            </div>
         </header>
 
         <form id="cosecha-form">
@@ -156,8 +161,8 @@
                     <thead>
                         <tr>
                             <th class="b-left">ITEM</th> 
-                            <th>N° JARRA (VINCULO)</th>
-                            <th>OBSERVACIÓN / TRASLADO</th>
+                            <th>N° JARRA</th>
+                            <th>TIPO</th>
                             <th title="Hora Inicio"><i data-lucide="play-circle"></i><br>INICIO</th>
                             <th title="Hora Término"><i data-lucide="check-circle"></i><br>TÉRMINO</th>
                             <th title="Tiempo Empleado"><i data-lucide="hourglass"></i><br>TOTAL</th>
@@ -167,22 +172,26 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left">
-                                <span id="next_row_jarras">0</span> 
+                                <span id="next_row_jarras">1</span> 
                             </td>
                             <td>
-                                <input type="number" id="j_num_jarra" placeholder="ID Jarra" inputmode="numeric">
+                                <input type="number" id="reg_jarras_n_jarra" placeholder="ID Jarra" inputmode="numeric">
                             </td>
                             <td>
-                                <input type="text" id="j_observacion" placeholder="Ej: Cosecha/Traslado">
+                                <select id="reg_jarras_tipo" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                    <option value="" disabled selected>Selecciona...</option>
+                                    <option value="C">Cosecha</option>
+                                    <option value="T">Traslado</option>
+                                </select>
                             </td>
                             <td>
-                                <input type="time" id="j_hora_inicio">
+                                <input type="time" id="reg_jarras_inicio">
                             </td>
                             <td>
-                                <input type="time" id="j_hora_termino">
+                                <input type="time" id="reg_jarras_termino">
                             </td>
                             <td>
-                                <span id="j_tiempo_empleado" style="font-weight: bold; color: #555;">0'</span>
+                                <span id="reg_jarras_tiempo" style="font-weight: bold; color: #555;">0'</span>
                             </td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-jarras" class="btn-mini-add">
@@ -192,7 +201,7 @@
                         </tr>
                     </tbody>
                     <tbody id="tbody-jarras">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -229,11 +238,11 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_visual">0</span></td>
-                            <td><input type="number" id="v_jarra" placeholder="0" inputmode="numeric"></td>
-                            <td><input type="number" id="v_peso1" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="v_peso2" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="v_llegada_acopio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="v_despacho_acopio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_visual_n_jarra" placeholder="0" inputmode="numeric"></td>
+                            <td><input type="number" id="reg_visual_peso_1" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_visual_peso_2" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_visual_llegada_acopio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_visual_despacho_acopio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-visual" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -276,11 +285,11 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_tiempos">0</span></td>
-                            <td><input type="time" id="t_inicio_cosecha"></td>
-                            <td><input type="time" id="t_perdida_peso"></td>
-                            <td><input type="time" id="t_termino_cosecha"></td>
-                            <td><input type="time" id="t_llegada_acopio"></td>
-                            <td><input type="time" id="t_despacho_acopio"></td>
+                            <td><input type="time" id="reg_tiempos_inicio_c"></td>
+                            <td><input type="time" id="reg_tiempos_perdida_peso"></td>
+                            <td><input type="time" id="reg_tiempos_termino_c"></td>
+                            <td><input type="time" id="reg_tiempos_llegada_acopio"></td>
+                            <td><input type="time" id="reg_tiempos_despacho_acopio"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-tiempos" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -332,14 +341,14 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_temp">0</span></td>
-                            <td><input type="number" id="temp_inicio_amb" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="temp_inicio_pul" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="temp_termino_amb" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="temp_termino_pul" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="temp_llegada_amb" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="temp_llegada_pul" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="temp_despacho_amb" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="temp_despacho_pul" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_inicio_amb" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_inicio_pul" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_termino_amb" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_termino_pul" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_llegada_amb" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_llegada_pul" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_despacho_amb" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_despacho_pul" placeholder="0.0" step="0.1"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-temperaturas" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -380,10 +389,10 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_humedad">0</span></td>
-                            <td><input type="number" id="h_inicio" placeholder="0%" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="h_termino" placeholder="0%" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="h_llegada" placeholder="0%" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="h_despacho" placeholder="0%" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_humedad_inicio" placeholder="0%" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_humedad_termino" placeholder="0%" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_humedad_llegada" placeholder="0%" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_humedad_despacho" placeholder="0%" step="0.1" inputmode="decimal"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-humedad" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -425,10 +434,10 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_temp_amb">0</span></td>
-                            <td><input type="number" id="ta_inicio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="ta_termino" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="ta_llegada" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="ta_despacho" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_temp_amb_inicio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_temp_amb_termino" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_temp_amb_llegada" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_temp_amb_despacho" placeholder="0.0" step="0.1" inputmode="decimal"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-temp-amb" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -470,10 +479,10 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_presion">0</span></td>
-                            <td><input type="number" id="pv_inicio" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="pv_termino" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="pv_llegada" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="pv_despacho" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_amb_inicio" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_amb_termino" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_amb_llegada" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_amb_despacho" placeholder="0.000" step="0.001" inputmode="decimal"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-presion" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -515,10 +524,10 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_presion_fruta">0</span></td>
-                            <td><input type="number" id="pvf_inicio" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="pvf_termino" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="pvf_llegada" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="pvf_despacho" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_fruta_inicio" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_fruta_termino" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_fruta_llegada" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_fruta_despacho" placeholder="0.000" step="0.001" inputmode="decimal"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-presion-fruta" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -560,7 +569,7 @@
                                 <span id="next_clam_obs">0</span>
                             </td>
                             <td>
-                                <input type="text" id="v_observacion_texto" placeholder="Escriba aquí la nota de la muestra...">
+                                <input type="text" id="reg_observacion_texto" placeholder="Escriba aquí la nota de la muestra...">
                             </td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-obs" class="btn-mini-add">

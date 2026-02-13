@@ -147,17 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Almacenamiento de datos por ensayo y tipo
     const datosEnsayos = {
         visual: {
-            1: { 
-                visual: [],
-                jarras: [],
-                temperaturas: [],
-                tiempos: [],
-                humedad: [],
-                tempambiente: [],
-                presionambiente: [],
-                presionfruta: [],
-                observacion: []
-            },
+            1: { visual: [], jarras: [], temperaturas: [], tiempos: [], humedad: [], tempambiente: [], presionambiente: [], presionfruta: [], observacion: [] },
             2: { visual: [], jarras: [], temperaturas: [], tiempos: [], humedad: [], tempambiente: [], presionambiente: [], presionfruta: [], observacion: [] },
             3: { visual: [], jarras: [], temperaturas: [], tiempos: [], humedad: [], tempambiente: [], presionambiente: [], presionfruta: [], observacion: [] },
             4: { visual: [], jarras: [], temperaturas: [], tiempos: [], humedad: [], tempambiente: [], presionambiente: [], presionfruta: [], observacion: [] }
@@ -231,7 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tipo === 'visual') {
             const datos = datosEnsayos.visual[ensayo];
             
-            // Restaurar Visual (Pesos)
             const tbodyVisual = document.getElementById('tbody-visual');
             if (tbodyVisual) {
                 tbodyVisual.innerHTML = '';
@@ -241,7 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 actualizarContador('next_clam_visual', datos.visual.length);
             }
             
-            // Restaurar Jarras
             const tbodyJarras = document.getElementById('tbody-jarras');
             if (tbodyJarras) {
                 tbodyJarras.innerHTML = '';
@@ -251,7 +239,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 actualizarContador('next_row_jarras', datos.jarras.length);
             }
             
-            // Restaurar Temperaturas
             const tbodyTemp = document.getElementById('tbody-temperaturas');
             if (tbodyTemp) {
                 tbodyTemp.innerHTML = '';
@@ -261,7 +248,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 actualizarContador('next_clam_temp', datos.temperaturas.length);
             }
             
-            // Restaurar Tiempos
             const tbodyTiempos = document.getElementById('tbody-tiempos');
             if (tbodyTiempos) {
                 tbodyTiempos.innerHTML = '';
@@ -271,7 +257,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 actualizarContador('next_clam_tiempos', datos.tiempos.length);
             }
             
-            // Restaurar Humedad
             const tbodyHumedad = document.getElementById('tbody-humedad');
             if (tbodyHumedad) {
                 tbodyHumedad.innerHTML = '';
@@ -281,7 +266,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 actualizarContador('next_clam_humedad', datos.humedad.length);
             }
             
-            // Restaurar Temp Ambiente
             const tbodyTempAmb = document.getElementById('tbody-temp-ambiente');
             if (tbodyTempAmb) {
                 tbodyTempAmb.innerHTML = '';
@@ -291,7 +275,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 actualizarContador('next_clam_temp_amb', datos.tempambiente.length);
             }
             
-            // Restaurar Presión Ambiente
             const tbodyPresion = document.getElementById('tbody-presion');
             if (tbodyPresion) {
                 tbodyPresion.innerHTML = '';
@@ -301,7 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 actualizarContador('next_clam_presion', datos.presionambiente.length);
             }
             
-            // Restaurar Presión Fruta
             const tbodyPresionFruta = document.getElementById('tbody-presion-fruta');
             if (tbodyPresionFruta) {
                 tbodyPresionFruta.innerHTML = '';
@@ -311,7 +293,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 actualizarContador('next_clam_presion_fruta', datos.presionfruta.length);
             }
             
-            // Restaurar Observación
             const tbodyObs = document.getElementById('tbody-observacion');
             if (tbodyObs) {
                 tbodyObs.innerHTML = '';
@@ -349,7 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const minutos2 = h2 * 60 + m2;
         
         let diferencia = minutos2 - minutos1;
-        if (diferencia < 0) diferencia += 24 * 60; // Si cruza medianoche
+        if (diferencia < 0) diferencia += 24 * 60;
         
         return `${diferencia}'`;
     }
@@ -402,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const row = document.createElement('tr');
         row.setAttribute('data-row', rowNum);
         row.setAttribute('data-jarra', data.jarra);
-        row.setAttribute('data-obs', data.observacion);
+        row.setAttribute('data-tipo', data.tipo);
         row.setAttribute('data-inicio', data.inicio);
         row.setAttribute('data-termino', data.termino);
         row.setAttribute('data-tiempo', data.tiempo);
@@ -410,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
         row.innerHTML = `
             <td class="row-id">${rowNum}</td>
             <td>${data.jarra}</td>
-            <td>${data.observacion}</td>
+            <td>${data.tipo}</td>
             <td>${data.inicio}</td>
             <td>${data.termino}</td>
             <td>${data.tiempo}</td>
@@ -442,25 +423,25 @@ document.addEventListener('DOMContentLoaded', () => {
     function agregarFilaTemperaturas(data, tbody, clamNum) {
         const row = document.createElement('tr');
         row.setAttribute('data-clam', clamNum);
-        row.setAttribute('data-inicio-amb', data.inicio_amb);
-        row.setAttribute('data-inicio-pul', data.inicio_pul);
-        row.setAttribute('data-termino-amb', data.termino_amb);
-        row.setAttribute('data-termino-pul', data.termino_pul);
-        row.setAttribute('data-llegada-amb', data.llegada_amb);
-        row.setAttribute('data-llegada-pul', data.llegada_pul);
-        row.setAttribute('data-despacho-amb', data.despacho_amb);
-        row.setAttribute('data-despacho-pul', data.despacho_pul);
+        row.setAttribute('data-inicio-amb', data.inicio_amb || '');
+        row.setAttribute('data-inicio-pul', data.inicio_pul || '');
+        row.setAttribute('data-termino-amb', data.termino_amb || '');
+        row.setAttribute('data-termino-pul', data.termino_pul || '');
+        row.setAttribute('data-llegada-amb', data.llegada_amb || '');
+        row.setAttribute('data-llegada-pul', data.llegada_pul || '');
+        row.setAttribute('data-despacho-amb', data.despacho_amb || '');
+        row.setAttribute('data-despacho-pul', data.despacho_pul || '');
 
         row.innerHTML = `
             <td class="clam-id">${clamNum}</td>
-            <td>${data.inicio_amb}°C</td>
-            <td>${data.inicio_pul}°C</td>
-            <td>${data.termino_amb}°C</td>
-            <td>${data.termino_pul}°C</td>
-            <td>${data.llegada_amb}°C</td>
-            <td>${data.llegada_pul}°C</td>
-            <td>${data.despacho_amb}°C</td>
-            <td>${data.despacho_pul}°C</td>
+            <td>${data.inicio_amb || '-'}°C</td>
+            <td>${data.inicio_pul || '-'}°C</td>
+            <td>${data.termino_amb || '-'}°C</td>
+            <td>${data.termino_pul || '-'}°C</td>
+            <td>${data.llegada_amb || '-'}°C</td>
+            <td>${data.llegada_pul || '-'}°C</td>
+            <td>${data.despacho_amb || '-'}°C</td>
+            <td>${data.despacho_pul || '-'}°C</td>
             <td>
                 <button type="button" class="btn-edit-row" title="Editar">
                     <i data-lucide="pencil"></i>
@@ -544,17 +525,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function agregarFilaHumedad(data, tbody, clamNum) {
         const row = document.createElement('tr');
         row.setAttribute('data-clam', clamNum);
-        row.setAttribute('data-inicio', data.inicio);
-        row.setAttribute('data-termino', data.termino);
-        row.setAttribute('data-llegada', data.llegada);
-        row.setAttribute('data-despacho', data.despacho);
+        row.setAttribute('data-inicio', data.inicio || '');
+        row.setAttribute('data-termino', data.termino || '');
+        row.setAttribute('data-llegada', data.llegada || '');
+        row.setAttribute('data-despacho', data.despacho || '');
 
         row.innerHTML = `
             <td class="clam-id">${clamNum}</td>
-            <td>${data.inicio}%</td>
-            <td>${data.termino}%</td>
-            <td>${data.llegada}%</td>
-            <td>${data.despacho}%</td>
+            <td>${data.inicio || '-'}%</td>
+            <td>${data.termino || '-'}%</td>
+            <td>${data.llegada || '-'}%</td>
+            <td>${data.despacho || '-'}%</td>
             <td>
                 <button type="button" class="btn-edit-row" title="Editar">
                     <i data-lucide="pencil"></i>
@@ -590,17 +571,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function agregarFilaTempAmbiente(data, tbody, clamNum) {
         const row = document.createElement('tr');
         row.setAttribute('data-clam', clamNum);
-        row.setAttribute('data-inicio', data.inicio);
-        row.setAttribute('data-termino', data.termino);
-        row.setAttribute('data-llegada', data.llegada);
-        row.setAttribute('data-despacho', data.despacho);
+        row.setAttribute('data-inicio', data.inicio || '');
+        row.setAttribute('data-termino', data.termino || '');
+        row.setAttribute('data-llegada', data.llegada || '');
+        row.setAttribute('data-despacho', data.despacho || '');
 
         row.innerHTML = `
             <td class="clam-id">${clamNum}</td>
-            <td>${data.inicio}°C</td>
-            <td>${data.termino}°C</td>
-            <td>${data.llegada}°C</td>
-            <td>${data.despacho}°C</td>
+            <td>${data.inicio || '-'}°C</td>
+            <td>${data.termino || '-'}°C</td>
+            <td>${data.llegada || '-'}°C</td>
+            <td>${data.despacho || '-'}°C</td>
             <td>
                 <button type="button" class="btn-edit-row" title="Editar">
                     <i data-lucide="pencil"></i>
@@ -636,17 +617,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function agregarFilaPresionAmbiente(data, tbody, clamNum) {
         const row = document.createElement('tr');
         row.setAttribute('data-clam', clamNum);
-        row.setAttribute('data-inicio', data.inicio);
-        row.setAttribute('data-termino', data.termino);
-        row.setAttribute('data-llegada', data.llegada);
-        row.setAttribute('data-despacho', data.despacho);
+        row.setAttribute('data-inicio', data.inicio || '');
+        row.setAttribute('data-termino', data.termino || '');
+        row.setAttribute('data-llegada', data.llegada || '');
+        row.setAttribute('data-despacho', data.despacho || '');
 
         row.innerHTML = `
             <td class="clam-id">${clamNum}</td>
-            <td>${data.inicio} kPa</td>
-            <td>${data.termino} kPa</td>
-            <td>${data.llegada} kPa</td>
-            <td>${data.despacho} kPa</td>
+            <td>${data.inicio || '-'} kPa</td>
+            <td>${data.termino || '-'} kPa</td>
+            <td>${data.llegada || '-'} kPa</td>
+            <td>${data.despacho || '-'} kPa</td>
             <td>
                 <button type="button" class="btn-edit-row" title="Editar">
                     <i data-lucide="pencil"></i>
@@ -682,17 +663,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function agregarFilaPresionFruta(data, tbody, clamNum) {
         const row = document.createElement('tr');
         row.setAttribute('data-clam', clamNum);
-        row.setAttribute('data-inicio', data.inicio);
-        row.setAttribute('data-termino', data.termino);
-        row.setAttribute('data-llegada', data.llegada);
-        row.setAttribute('data-despacho', data.despacho);
+        row.setAttribute('data-inicio', data.inicio || '');
+        row.setAttribute('data-termino', data.termino || '');
+        row.setAttribute('data-llegada', data.llegada || '');
+        row.setAttribute('data-despacho', data.despacho || '');
 
         row.innerHTML = `
             <td class="clam-id">${clamNum}</td>
-            <td>${data.inicio} kPa</td>
-            <td>${data.termino} kPa</td>
-            <td>${data.llegada} kPa</td>
-            <td>${data.despacho} kPa</td>
+            <td>${data.inicio || '-'} kPa</td>
+            <td>${data.termino || '-'} kPa</td>
+            <td>${data.llegada || '-'} kPa</td>
+            <td>${data.despacho || '-'} kPa</td>
             <td>
                 <button type="button" class="btn-edit-row" title="Editar">
                     <i data-lucide="pencil"></i>
@@ -728,11 +709,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function agregarFilaObservacion(data, tbody, clamNum) {
         const row = document.createElement('tr');
         row.setAttribute('data-clam', clamNum);
-        row.setAttribute('data-obs', data.observacion);
+        row.setAttribute('data-obs', data.observacion || '');
 
         row.innerHTML = `
             <td class="clam-id">${clamNum}</td>
-            <td>${data.observacion}</td>
+            <td>${data.observacion || '-'}</td>
             <td>
                 <button type="button" class="btn-edit-row" title="Editar">
                     <i data-lucide="pencil"></i>
@@ -803,11 +784,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const llegada = document.getElementById('edit_llegada').value;
                 const despacho = document.getElementById('edit_despacho').value;
 
-                if (!jarra || !p1 || !p2 || !llegada || !despacho) {
-                    Swal.showValidationMessage('Todos los campos son obligatorios');
-                    return false;
-                }
-
                 return { jarra, p1, p2, llegada, despacho };
             }
         }).then((result) => {
@@ -840,8 +816,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <input type="number" id="edit_jarra" class="swal2-input" value="${dataActual.jarra}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
-                        <label style="display: block; text-align: left; margin-bottom: 5px;">Observación:</label>
-                        <input type="text" id="edit_obs" class="swal2-input" value="${dataActual.observacion}" style="width: 90%; margin: 0;">
+                        <label style="display: block; text-align: left; margin-bottom: 5px;">Tipo:</label>
+                        <select id="edit_tipo" class="swal2-input" style="width: 90%; margin: 0;">
+                            <option value="C" ${dataActual.tipo === 'C' ? 'selected' : ''}>Cosecha</option>
+                            <option value="T" ${dataActual.tipo === 'T' ? 'selected' : ''}>Traslado</option>
+                        </select>
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Hora Inicio:</label>
@@ -859,22 +838,17 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
                 const jarra = document.getElementById('edit_jarra').value;
-                const observacion = document.getElementById('edit_obs').value;
+                const tipo = document.getElementById('edit_tipo').value;
                 const inicio = document.getElementById('edit_inicio').value;
                 const termino = document.getElementById('edit_termino').value;
 
-                if (!jarra || !observacion || !inicio || !termino) {
-                    Swal.showValidationMessage('Todos los campos son obligatorios');
-                    return false;
-                }
-
                 const tiempo = calcularTiempoEmpleado(inicio, termino);
-                return { jarra, observacion, inicio, termino, tiempo };
+                return { jarra, tipo, inicio, termino, tiempo };
             }
         }).then((result) => {
             if (result.isConfirmed) {
-                const { jarra, observacion, inicio, termino, tiempo } = result.value;
-                datosEnsayos[tipoActual][ensayoActual].jarras[rowNum - 1] = { jarra, observacion, inicio, termino, tiempo };
+                const { jarra, tipo, inicio, termino, tiempo } = result.value;
+                datosEnsayos[tipoActual][ensayoActual].jarras[rowNum - 1] = { jarra, tipo, inicio, termino, tiempo };
                 restaurarDatosEnsayo(tipoActual, ensayoActual);
                 
                 Swal.fire({
@@ -898,35 +872,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="display: flex; flex-direction: column; gap: 10px;">
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Inicio - Ambiente (°C):</label>
-                        <input type="number" id="edit_inicio_amb" class="swal2-input" step="0.1" value="${dataActual.inicio_amb}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_inicio_amb" class="swal2-input" step="0.1" value="${dataActual.inicio_amb || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Inicio - Pulpa (°C):</label>
-                        <input type="number" id="edit_inicio_pul" class="swal2-input" step="0.1" value="${dataActual.inicio_pul}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_inicio_pul" class="swal2-input" step="0.1" value="${dataActual.inicio_pul || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Término - Ambiente (°C):</label>
-                        <input type="number" id="edit_termino_amb" class="swal2-input" step="0.1" value="${dataActual.termino_amb}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_termino_amb" class="swal2-input" step="0.1" value="${dataActual.termino_amb || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Término - Pulpa (°C):</label>
-                        <input type="number" id="edit_termino_pul" class="swal2-input" step="0.1" value="${dataActual.termino_pul}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_termino_pul" class="swal2-input" step="0.1" value="${dataActual.termino_pul || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Llegada - Ambiente (°C):</label>
-                        <input type="number" id="edit_llegada_amb" class="swal2-input" step="0.1" value="${dataActual.llegada_amb}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_llegada_amb" class="swal2-input" step="0.1" value="${dataActual.llegada_amb || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Llegada - Pulpa (°C):</label>
-                        <input type="number" id="edit_llegada_pul" class="swal2-input" step="0.1" value="${dataActual.llegada_pul}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_llegada_pul" class="swal2-input" step="0.1" value="${dataActual.llegada_pul || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Despacho - Ambiente (°C):</label>
-                        <input type="number" id="edit_despacho_amb" class="swal2-input" step="0.1" value="${dataActual.despacho_amb}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_despacho_amb" class="swal2-input" step="0.1" value="${dataActual.despacho_amb || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Despacho - Pulpa (°C):</label>
-                        <input type="number" id="edit_despacho_pul" class="swal2-input" step="0.1" value="${dataActual.despacho_pul}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_despacho_pul" class="swal2-input" step="0.1" value="${dataActual.despacho_pul || ''}" style="width: 90%; margin: 0;">
                     </div>
                 </div>
             `,
@@ -936,14 +910,14 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
                 return {
-                    inicio_amb: document.getElementById('edit_inicio_amb').value,
-                    inicio_pul: document.getElementById('edit_inicio_pul').value,
-                    termino_amb: document.getElementById('edit_termino_amb').value,
-                    termino_pul: document.getElementById('edit_termino_pul').value,
-                    llegada_amb: document.getElementById('edit_llegada_amb').value,
-                    llegada_pul: document.getElementById('edit_llegada_pul').value,
-                    despacho_amb: document.getElementById('edit_despacho_amb').value,
-                    despacho_pul: document.getElementById('edit_despacho_pul').value
+                    inicio_amb: document.getElementById('edit_inicio_amb').value || '',
+                    inicio_pul: document.getElementById('edit_inicio_pul').value || '',
+                    termino_amb: document.getElementById('edit_termino_amb').value || '',
+                    termino_pul: document.getElementById('edit_termino_pul').value || '',
+                    llegada_amb: document.getElementById('edit_llegada_amb').value || '',
+                    llegada_pul: document.getElementById('edit_llegada_pul').value || '',
+                    despacho_amb: document.getElementById('edit_despacho_amb').value || '',
+                    despacho_pul: document.getElementById('edit_despacho_pul').value || ''
                 };
             }
         }).then((result) => {
@@ -998,11 +972,11 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
                 return {
-                    inicio: document.getElementById('edit_inicio').value,
-                    perdida: document.getElementById('edit_perdida').value,
-                    termino: document.getElementById('edit_termino').value,
-                    llegada: document.getElementById('edit_llegada').value,
-                    despacho: document.getElementById('edit_despacho').value
+                    inicio: document.getElementById('edit_inicio').value || '',
+                    perdida: document.getElementById('edit_perdida').value || '',
+                    termino: document.getElementById('edit_termino').value || '',
+                    llegada: document.getElementById('edit_llegada').value || '',
+                    despacho: document.getElementById('edit_despacho').value || ''
                 };
             }
         }).then((result) => {
@@ -1031,19 +1005,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="display: flex; flex-direction: column; gap: 15px;">
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Inicio (%):</label>
-                        <input type="number" id="edit_inicio" class="swal2-input" step="0.1" value="${dataActual.inicio}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_inicio" class="swal2-input" step="0.1" value="${dataActual.inicio || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Término (%):</label>
-                        <input type="number" id="edit_termino" class="swal2-input" step="0.1" value="${dataActual.termino}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_termino" class="swal2-input" step="0.1" value="${dataActual.termino || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Llegada (%):</label>
-                        <input type="number" id="edit_llegada" class="swal2-input" step="0.1" value="${dataActual.llegada}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_llegada" class="swal2-input" step="0.1" value="${dataActual.llegada || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Despacho (%):</label>
-                        <input type="number" id="edit_despacho" class="swal2-input" step="0.1" value="${dataActual.despacho}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_despacho" class="swal2-input" step="0.1" value="${dataActual.despacho || ''}" style="width: 90%; margin: 0;">
                     </div>
                 </div>
             `,
@@ -1053,10 +1027,10 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
                 return {
-                    inicio: document.getElementById('edit_inicio').value,
-                    termino: document.getElementById('edit_termino').value,
-                    llegada: document.getElementById('edit_llegada').value,
-                    despacho: document.getElementById('edit_despacho').value
+                    inicio: document.getElementById('edit_inicio').value || '',
+                    termino: document.getElementById('edit_termino').value || '',
+                    llegada: document.getElementById('edit_llegada').value || '',
+                    despacho: document.getElementById('edit_despacho').value || ''
                 };
             }
         }).then((result) => {
@@ -1085,19 +1059,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="display: flex; flex-direction: column; gap: 15px;">
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Inicio (°C):</label>
-                        <input type="number" id="edit_inicio" class="swal2-input" step="0.1" value="${dataActual.inicio}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_inicio" class="swal2-input" step="0.1" value="${dataActual.inicio || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Término (°C):</label>
-                        <input type="number" id="edit_termino" class="swal2-input" step="0.1" value="${dataActual.termino}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_termino" class="swal2-input" step="0.1" value="${dataActual.termino || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Llegada (°C):</label>
-                        <input type="number" id="edit_llegada" class="swal2-input" step="0.1" value="${dataActual.llegada}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_llegada" class="swal2-input" step="0.1" value="${dataActual.llegada || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Despacho (°C):</label>
-                        <input type="number" id="edit_despacho" class="swal2-input" step="0.1" value="${dataActual.despacho}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_despacho" class="swal2-input" step="0.1" value="${dataActual.despacho || ''}" style="width: 90%; margin: 0;">
                     </div>
                 </div>
             `,
@@ -1107,10 +1081,10 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
                 return {
-                    inicio: document.getElementById('edit_inicio').value,
-                    termino: document.getElementById('edit_termino').value,
-                    llegada: document.getElementById('edit_llegada').value,
-                    despacho: document.getElementById('edit_despacho').value
+                    inicio: document.getElementById('edit_inicio').value || '',
+                    termino: document.getElementById('edit_termino').value || '',
+                    llegada: document.getElementById('edit_llegada').value || '',
+                    despacho: document.getElementById('edit_despacho').value || ''
                 };
             }
         }).then((result) => {
@@ -1139,19 +1113,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="display: flex; flex-direction: column; gap: 15px;">
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Inicio (kPa):</label>
-                        <input type="number" id="edit_inicio" class="swal2-input" step="0.001" value="${dataActual.inicio}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_inicio" class="swal2-input" step="0.001" value="${dataActual.inicio || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Término (kPa):</label>
-                        <input type="number" id="edit_termino" class="swal2-input" step="0.001" value="${dataActual.termino}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_termino" class="swal2-input" step="0.001" value="${dataActual.termino || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Llegada (kPa):</label>
-                        <input type="number" id="edit_llegada" class="swal2-input" step="0.001" value="${dataActual.llegada}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_llegada" class="swal2-input" step="0.001" value="${dataActual.llegada || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Despacho (kPa):</label>
-                        <input type="number" id="edit_despacho" class="swal2-input" step="0.001" value="${dataActual.despacho}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_despacho" class="swal2-input" step="0.001" value="${dataActual.despacho || ''}" style="width: 90%; margin: 0;">
                     </div>
                 </div>
             `,
@@ -1161,10 +1135,10 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
                 return {
-                    inicio: document.getElementById('edit_inicio').value,
-                    termino: document.getElementById('edit_termino').value,
-                    llegada: document.getElementById('edit_llegada').value,
-                    despacho: document.getElementById('edit_despacho').value
+                    inicio: document.getElementById('edit_inicio').value || '',
+                    termino: document.getElementById('edit_termino').value || '',
+                    llegada: document.getElementById('edit_llegada').value || '',
+                    despacho: document.getElementById('edit_despacho').value || ''
                 };
             }
         }).then((result) => {
@@ -1193,19 +1167,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="display: flex; flex-direction: column; gap: 15px;">
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Inicio (kPa):</label>
-                        <input type="number" id="edit_inicio" class="swal2-input" step="0.001" value="${dataActual.inicio}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_inicio" class="swal2-input" step="0.001" value="${dataActual.inicio || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Término (kPa):</label>
-                        <input type="number" id="edit_termino" class="swal2-input" step="0.001" value="${dataActual.termino}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_termino" class="swal2-input" step="0.001" value="${dataActual.termino || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Llegada (kPa):</label>
-                        <input type="number" id="edit_llegada" class="swal2-input" step="0.001" value="${dataActual.llegada}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_llegada" class="swal2-input" step="0.001" value="${dataActual.llegada || ''}" style="width: 90%; margin: 0;">
                     </div>
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Despacho (kPa):</label>
-                        <input type="number" id="edit_despacho" class="swal2-input" step="0.001" value="${dataActual.despacho}" style="width: 90%; margin: 0;">
+                        <input type="number" id="edit_despacho" class="swal2-input" step="0.001" value="${dataActual.despacho || ''}" style="width: 90%; margin: 0;">
                     </div>
                 </div>
             `,
@@ -1215,10 +1189,10 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
                 return {
-                    inicio: document.getElementById('edit_inicio').value,
-                    termino: document.getElementById('edit_termino').value,
-                    llegada: document.getElementById('edit_llegada').value,
-                    despacho: document.getElementById('edit_despacho').value
+                    inicio: document.getElementById('edit_inicio').value || '',
+                    termino: document.getElementById('edit_termino').value || '',
+                    llegada: document.getElementById('edit_llegada').value || '',
+                    despacho: document.getElementById('edit_despacho').value || ''
                 };
             }
         }).then((result) => {
@@ -1247,7 +1221,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="display: flex; flex-direction: column; gap: 15px;">
                     <div>
                         <label style="display: block; text-align: left; margin-bottom: 5px;">Observación:</label>
-                        <textarea id="edit_obs" class="swal2-input" rows="3" style="width: 90%; margin: 0; height: 80px;">${dataActual.observacion}</textarea>
+                        <textarea id="edit_obs" class="swal2-input" rows="3" style="width: 90%; margin: 0; height: 80px;">${dataActual.observacion || ''}</textarea>
                     </div>
                 </div>
             `,
@@ -1257,12 +1231,6 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
                 const observacion = document.getElementById('edit_obs').value;
-
-                if (!observacion) {
-                    Swal.showValidationMessage('La observación es obligatoria');
-                    return false;
-                }
-
                 return { observacion };
             }
         }).then((result) => {
@@ -1312,7 +1280,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ========================================
-    // REPLICAR FILA
+    // REPLICAR FILA (SIN SWAL AL AGREGAR, SOLO AL ALCANZAR LÍMITE)
     // ========================================
     function replicarFila(tipo, data) {
         if (!ensayoActual) {
@@ -1339,14 +1307,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         datosEnsayos[tipoActual][ensayoActual][tipo].push({...data});
         restaurarDatosEnsayo(tipoActual, ensayoActual);
-
-        Swal.fire({
-            title: 'Replicado',
-            text: 'Registro replicado correctamente',
-            icon: 'success',
-            timer: 1500,
-            showConfirmButton: false
-        });
     }
 
     // ========================================
@@ -1386,9 +1346,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========================================
     // CALCULAR TIEMPO AUTOMÁTICO EN JARRAS
     // ========================================
-    const inputInicio = document.getElementById('j_hora_inicio');
-    const inputTermino = document.getElementById('j_hora_termino');
-    const spanTiempo = document.getElementById('j_tiempo_empleado');
+    const inputInicio = document.getElementById('reg_jarras_inicio');
+    const inputTermino = document.getElementById('reg_jarras_termino');
+    const spanTiempo = document.getElementById('reg_jarras_tiempo');
 
     if (inputInicio && inputTermino && spanTiempo) {
         [inputInicio, inputTermino].forEach(input => {
@@ -1406,7 +1366,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ========================================
-    // AÑADIR PESOS (VISUAL)
+    // AÑADIR PESOS (VISUAL) - SIN VALIDACIONES
     // ========================================
     const btnAddVisual = document.getElementById('btn-add-visual');
     if (btnAddVisual) {
@@ -1420,36 +1380,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            const jarra = document.getElementById('v_jarra').value;
-            const p1 = document.getElementById('v_peso1').value;
-            const p2 = document.getElementById('v_peso2').value;
-            const llegada = document.getElementById('v_llegada_acopio').value;
-            const despacho = document.getElementById('v_despacho_acopio').value;
+            const jarra = document.getElementById('reg_visual_n_jarra').value || '';
+            const p1 = document.getElementById('reg_visual_peso_1').value || '';
+            const p2 = document.getElementById('reg_visual_peso_2').value || '';
+            const llegada = document.getElementById('reg_visual_llegada_acopio').value || '';
+            const despacho = document.getElementById('reg_visual_despacho_acopio').value || '';
 
-            if (jarra && p1 && p2 && llegada && despacho) {
-                const tbody = document.getElementById('tbody-visual');
-                const rowData = { jarra, p1, p2, llegada, despacho };
-                
-                datosEnsayos.visual[ensayoActual].visual.push(rowData);
-                const clamNum = datosEnsayos.visual[ensayoActual].visual.length;
-                
-                agregarFilaVisual(rowData, tbody, clamNum);
-                actualizarContador('next_clam_visual', clamNum);
+            const tbody = document.getElementById('tbody-visual');
+            const rowData = { jarra, p1, p2, llegada, despacho };
+            
+            datosEnsayos.visual[ensayoActual].visual.push(rowData);
+            const clamNum = datosEnsayos.visual[ensayoActual].visual.length;
+            
+            agregarFilaVisual(rowData, tbody, clamNum);
+            actualizarContador('next_clam_visual', clamNum);
 
-                document.getElementById('v_jarra').value = '';
-                document.getElementById('v_peso1').value = '';
-                document.getElementById('v_peso2').value = '';
-                document.getElementById('v_llegada_acopio').value = '';
-                document.getElementById('v_despacho_acopio').value = '';
-                document.getElementById('v_jarra').focus();
-            } else {
-                Swal.fire({ title: 'Atención', text: 'Todos los campos son obligatorios', icon: 'warning' });
-            }
+            document.getElementById('reg_visual_n_jarra').value = '';
+            document.getElementById('reg_visual_peso_1').value = '';
+            document.getElementById('reg_visual_peso_2').value = '';
+            document.getElementById('reg_visual_llegada_acopio').value = '';
+            document.getElementById('reg_visual_despacho_acopio').value = '';
+            document.getElementById('reg_visual_n_jarra').focus();
         });
     }
 
     // ========================================
-    // AÑADIR JARRAS
+    // AÑADIR JARRAS - SIN VALIDACIONES
     // ========================================
     const btnAddJarras = document.getElementById('btn-add-jarras');
     if (btnAddJarras) {
@@ -1462,48 +1418,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 return;
             }
-
-            // Validar que existan pesos primero
-            if (datosEnsayos.visual[ensayoActual].visual.length === 0) {
-                Swal.fire({
-                    title: 'Atención',
-                    text: 'Debes agregar los pesos (Visual) primero para tener en cuenta los N° Jarra',
-                    icon: 'warning',
-                    confirmButtonColor: '#2f7cc0'
-                });
-                return;
-            }
             
-            const jarra = document.getElementById('j_num_jarra').value;
-            const observacion = document.getElementById('j_observacion').value;
-            const inicio = document.getElementById('j_hora_inicio').value;
-            const termino = document.getElementById('j_hora_termino').value;
+            const jarra = document.getElementById('reg_jarras_n_jarra').value || '';
+            const tipo = document.getElementById('reg_jarras_tipo').value || '';
+            const inicio = document.getElementById('reg_jarras_inicio').value || '';
+            const termino = document.getElementById('reg_jarras_termino').value || '';
 
-            if (jarra && observacion && inicio && termino) {
-                const tiempo = calcularTiempoEmpleado(inicio, termino);
-                const tbody = document.getElementById('tbody-jarras');
-                const rowData = { jarra, observacion, inicio, termino, tiempo };
-                
-                datosEnsayos.visual[ensayoActual].jarras.push(rowData);
-                const rowNum = datosEnsayos.visual[ensayoActual].jarras.length;
-                
-                agregarFilaJarras(rowData, tbody, rowNum);
-                actualizarContador('next_row_jarras', rowNum);
+            const tiempo = calcularTiempoEmpleado(inicio, termino);
+            const tbody = document.getElementById('tbody-jarras');
+            const rowData = { jarra, tipo, inicio, termino, tiempo };
+            
+            datosEnsayos.visual[ensayoActual].jarras.push(rowData);
+            const rowNum = datosEnsayos.visual[ensayoActual].jarras.length;
+            
+            agregarFilaJarras(rowData, tbody, rowNum);
+            actualizarContador('next_row_jarras', rowNum);
 
-                document.getElementById('j_num_jarra').value = '';
-                document.getElementById('j_observacion').value = '';
-                document.getElementById('j_hora_inicio').value = '';
-                document.getElementById('j_hora_termino').value = '';
-                document.getElementById('j_tiempo_empleado').textContent = "0'";
-                document.getElementById('j_num_jarra').focus();
-            } else {
-                Swal.fire({ title: 'Atención', text: 'Todos los campos son obligatorios', icon: 'warning' });
-            }
+            document.getElementById('reg_jarras_n_jarra').value = '';
+            document.getElementById('reg_jarras_tipo').value = '';
+            document.getElementById('reg_jarras_inicio').value = '';
+            document.getElementById('reg_jarras_termino').value = '';
+            document.getElementById('reg_jarras_tiempo').textContent = "0'";
+            document.getElementById('reg_jarras_n_jarra').focus();
         });
     }
 
     // ========================================
-    // AÑADIR TEMPERATURAS
+    // AÑADIR TEMPERATURAS - SIN VALIDACIONES
     // ========================================
     const btnAddTemp = document.getElementById('btn-add-temperaturas');
     if (btnAddTemp) {
@@ -1517,42 +1458,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            const inicio_amb = document.getElementById('temp_inicio_amb').value;
-            const inicio_pul = document.getElementById('temp_inicio_pul').value;
-            const termino_amb = document.getElementById('temp_termino_amb').value;
-            const termino_pul = document.getElementById('temp_termino_pul').value;
-            const llegada_amb = document.getElementById('temp_llegada_amb').value;
-            const llegada_pul = document.getElementById('temp_llegada_pul').value;
-            const despacho_amb = document.getElementById('temp_despacho_amb').value;
-            const despacho_pul = document.getElementById('temp_despacho_pul').value;
+            const inicio_amb = document.getElementById('reg_temp_inicio_amb').value || '';
+            const inicio_pul = document.getElementById('reg_temp_inicio_pul').value || '';
+            const termino_amb = document.getElementById('reg_temp_termino_amb').value || '';
+            const termino_pul = document.getElementById('reg_temp_termino_pul').value || '';
+            const llegada_amb = document.getElementById('reg_temp_llegada_amb').value || '';
+            const llegada_pul = document.getElementById('reg_temp_llegada_pul').value || '';
+            const despacho_amb = document.getElementById('reg_temp_despacho_amb').value || '';
+            const despacho_pul = document.getElementById('reg_temp_despacho_pul').value || '';
 
-            if (inicio_amb && inicio_pul && termino_amb && termino_pul && llegada_amb && llegada_pul && despacho_amb && despacho_pul) {
-                const tbody = document.getElementById('tbody-temperaturas');
-                const rowData = { inicio_amb, inicio_pul, termino_amb, termino_pul, llegada_amb, llegada_pul, despacho_amb, despacho_pul };
-                
-                datosEnsayos.visual[ensayoActual].temperaturas.push(rowData);
-                const clamNum = datosEnsayos.visual[ensayoActual].temperaturas.length;
-                
-                agregarFilaTemperaturas(rowData, tbody, clamNum);
-                actualizarContador('next_clam_temp', clamNum);
+            const tbody = document.getElementById('tbody-temperaturas');
+            const rowData = { inicio_amb, inicio_pul, termino_amb, termino_pul, llegada_amb, llegada_pul, despacho_amb, despacho_pul };
+            
+            datosEnsayos.visual[ensayoActual].temperaturas.push(rowData);
+            const clamNum = datosEnsayos.visual[ensayoActual].temperaturas.length;
+            
+            agregarFilaTemperaturas(rowData, tbody, clamNum);
+            actualizarContador('next_clam_temp', clamNum);
 
-                document.getElementById('temp_inicio_amb').value = '';
-                document.getElementById('temp_inicio_pul').value = '';
-                document.getElementById('temp_termino_amb').value = '';
-                document.getElementById('temp_termino_pul').value = '';
-                document.getElementById('temp_llegada_amb').value = '';
-                document.getElementById('temp_llegada_pul').value = '';
-                document.getElementById('temp_despacho_amb').value = '';
-                document.getElementById('temp_despacho_pul').value = '';
-                document.getElementById('temp_inicio_amb').focus();
-            } else {
-                Swal.fire({ title: 'Atención', text: 'Todos los campos son obligatorios', icon: 'warning' });
-            }
+            document.getElementById('reg_temp_inicio_amb').value = '';
+            document.getElementById('reg_temp_inicio_pul').value = '';
+            document.getElementById('reg_temp_termino_amb').value = '';
+            document.getElementById('reg_temp_termino_pul').value = '';
+            document.getElementById('reg_temp_llegada_amb').value = '';
+            document.getElementById('reg_temp_llegada_pul').value = '';
+            document.getElementById('reg_temp_despacho_amb').value = '';
+            document.getElementById('reg_temp_despacho_pul').value = '';
+            document.getElementById('reg_temp_inicio_amb').focus();
         });
     }
 
     // ========================================
-    // AÑADIR TIEMPOS
+    // AÑADIR TIEMPOS - SIN VALIDACIONES
     // ========================================
     const btnAddTiempos = document.getElementById('btn-add-tiempos');
     if (btnAddTiempos) {
@@ -1566,36 +1503,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            const inicio = document.getElementById('t_inicio_cosecha').value;
-            const perdida = document.getElementById('t_perdida_peso').value;
-            const termino = document.getElementById('t_termino_cosecha').value;
-            const llegada = document.getElementById('t_llegada_acopio').value;
-            const despacho = document.getElementById('t_despacho_acopio').value;
+            const inicio = document.getElementById('reg_tiempos_inicio_c').value || '';
+            const perdida = document.getElementById('reg_tiempos_perdida_peso').value || '';
+            const termino = document.getElementById('reg_tiempos_termino_c').value || '';
+            const llegada = document.getElementById('reg_tiempos_llegada_acopio').value || '';
+            const despacho = document.getElementById('reg_tiempos_despacho_acopio').value || '';
 
-            if (inicio || perdida || termino || llegada || despacho) {
-                const tbody = document.getElementById('tbody-tiempos');
-                const rowData = { inicio, perdida, termino, llegada, despacho };
-                
-                datosEnsayos.visual[ensayoActual].tiempos.push(rowData);
-                const clamNum = datosEnsayos.visual[ensayoActual].tiempos.length;
-                
-                agregarFilaTiempos(rowData, tbody, clamNum);
-                actualizarContador('next_clam_tiempos', clamNum);
+            const tbody = document.getElementById('tbody-tiempos');
+            const rowData = { inicio, perdida, termino, llegada, despacho };
+            
+            datosEnsayos.visual[ensayoActual].tiempos.push(rowData);
+            const clamNum = datosEnsayos.visual[ensayoActual].tiempos.length;
+            
+            agregarFilaTiempos(rowData, tbody, clamNum);
+            actualizarContador('next_clam_tiempos', clamNum);
 
-                document.getElementById('t_inicio_cosecha').value = '';
-                document.getElementById('t_perdida_peso').value = '';
-                document.getElementById('t_termino_cosecha').value = '';
-                document.getElementById('t_llegada_acopio').value = '';
-                document.getElementById('t_despacho_acopio').value = '';
-                document.getElementById('t_inicio_cosecha').focus();
-            } else {
-                Swal.fire({ title: 'Atención', text: 'Debes ingresar al menos un tiempo', icon: 'warning' });
-            }
+            document.getElementById('reg_tiempos_inicio_c').value = '';
+            document.getElementById('reg_tiempos_perdida_peso').value = '';
+            document.getElementById('reg_tiempos_termino_c').value = '';
+            document.getElementById('reg_tiempos_llegada_acopio').value = '';
+            document.getElementById('reg_tiempos_despacho_acopio').value = '';
+            document.getElementById('reg_tiempos_inicio_c').focus();
         });
     }
 
     // ========================================
-    // AÑADIR HUMEDAD
+    // AÑADIR HUMEDAD - SIN VALIDACIONES
     // ========================================
     const btnAddHumedad = document.getElementById('btn-add-humedad');
     if (btnAddHumedad) {
@@ -1609,34 +1542,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            const inicio = document.getElementById('h_inicio').value;
-            const termino = document.getElementById('h_termino').value;
-            const llegada = document.getElementById('h_llegada').value;
-            const despacho = document.getElementById('h_despacho').value;
+            const inicio = document.getElementById('reg_humedad_inicio').value || '';
+            const termino = document.getElementById('reg_humedad_termino').value || '';
+            const llegada = document.getElementById('reg_humedad_llegada').value || '';
+            const despacho = document.getElementById('reg_humedad_despacho').value || '';
 
-            if (inicio && termino && llegada && despacho) {
-                const tbody = document.getElementById('tbody-humedad');
-                const rowData = { inicio, termino, llegada, despacho };
-                
-                datosEnsayos.visual[ensayoActual].humedad.push(rowData);
-                const clamNum = datosEnsayos.visual[ensayoActual].humedad.length;
-                
-                agregarFilaHumedad(rowData, tbody, clamNum);
-                actualizarContador('next_clam_humedad', clamNum);
+            const tbody = document.getElementById('tbody-humedad');
+            const rowData = { inicio, termino, llegada, despacho };
+            
+            datosEnsayos.visual[ensayoActual].humedad.push(rowData);
+            const clamNum = datosEnsayos.visual[ensayoActual].humedad.length;
+            
+            agregarFilaHumedad(rowData, tbody, clamNum);
+            actualizarContador('next_clam_humedad', clamNum);
 
-                document.getElementById('h_inicio').value = '';
-                document.getElementById('h_termino').value = '';
-                document.getElementById('h_llegada').value = '';
-                document.getElementById('h_despacho').value = '';
-                document.getElementById('h_inicio').focus();
-            } else {
-                Swal.fire({ title: 'Atención', text: 'Todos los campos son obligatorios', icon: 'warning' });
-            }
+            document.getElementById('reg_humedad_inicio').value = '';
+            document.getElementById('reg_humedad_termino').value = '';
+            document.getElementById('reg_humedad_llegada').value = '';
+            document.getElementById('reg_humedad_despacho').value = '';
+            document.getElementById('reg_humedad_inicio').focus();
         });
     }
 
     // ========================================
-    // AÑADIR TEMP AMBIENTE
+    // AÑADIR TEMP AMBIENTE - SIN VALIDACIONES
     // ========================================
     const btnAddTempAmb = document.getElementById('btn-add-temp-amb');
     if (btnAddTempAmb) {
@@ -1650,34 +1579,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            const inicio = document.getElementById('ta_inicio').value;
-            const termino = document.getElementById('ta_termino').value;
-            const llegada = document.getElementById('ta_llegada').value;
-            const despacho = document.getElementById('ta_despacho').value;
+            const inicio = document.getElementById('reg_temp_amb_inicio').value || '';
+            const termino = document.getElementById('reg_temp_amb_termino').value || '';
+            const llegada = document.getElementById('reg_temp_amb_llegada').value || '';
+            const despacho = document.getElementById('reg_temp_amb_despacho').value || '';
 
-            if (inicio && termino && llegada && despacho) {
-                const tbody = document.getElementById('tbody-temp-ambiente');
-                const rowData = { inicio, termino, llegada, despacho };
-                
-                datosEnsayos.visual[ensayoActual].tempambiente.push(rowData);
-                const clamNum = datosEnsayos.visual[ensayoActual].tempambiente.length;
-                
-                agregarFilaTempAmbiente(rowData, tbody, clamNum);
-                actualizarContador('next_clam_temp_amb', clamNum);
+            const tbody = document.getElementById('tbody-temp-ambiente');
+            const rowData = { inicio, termino, llegada, despacho };
+            
+            datosEnsayos.visual[ensayoActual].tempambiente.push(rowData);
+            const clamNum = datosEnsayos.visual[ensayoActual].tempambiente.length;
+            
+            agregarFilaTempAmbiente(rowData, tbody, clamNum);
+            actualizarContador('next_clam_temp_amb', clamNum);
 
-                document.getElementById('ta_inicio').value = '';
-                document.getElementById('ta_termino').value = '';
-                document.getElementById('ta_llegada').value = '';
-                document.getElementById('ta_despacho').value = '';
-                document.getElementById('ta_inicio').focus();
-            } else {
-                Swal.fire({ title: 'Atención', text: 'Todos los campos son obligatorios', icon: 'warning' });
-            }
+            document.getElementById('reg_temp_amb_inicio').value = '';
+            document.getElementById('reg_temp_amb_termino').value = '';
+            document.getElementById('reg_temp_amb_llegada').value = '';
+            document.getElementById('reg_temp_amb_despacho').value = '';
+            document.getElementById('reg_temp_amb_inicio').focus();
         });
     }
 
     // ========================================
-    // AÑADIR PRESIÓN AMBIENTE
+    // AÑADIR PRESIÓN AMBIENTE - SIN VALIDACIONES
     // ========================================
     const btnAddPresion = document.getElementById('btn-add-presion');
     if (btnAddPresion) {
@@ -1691,34 +1616,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            const inicio = document.getElementById('pv_inicio').value;
-            const termino = document.getElementById('pv_termino').value;
-            const llegada = document.getElementById('pv_llegada').value;
-            const despacho = document.getElementById('pv_despacho').value;
+            const inicio = document.getElementById('reg_presion_amb_inicio').value || '';
+            const termino = document.getElementById('reg_presion_amb_termino').value || '';
+            const llegada = document.getElementById('reg_presion_amb_llegada').value || '';
+            const despacho = document.getElementById('reg_presion_amb_despacho').value || '';
 
-            if (inicio && termino && llegada && despacho) {
-                const tbody = document.getElementById('tbody-presion');
-                const rowData = { inicio, termino, llegada, despacho };
-                
-                datosEnsayos.visual[ensayoActual].presionambiente.push(rowData);
-                const clamNum = datosEnsayos.visual[ensayoActual].presionambiente.length;
-                
-                agregarFilaPresionAmbiente(rowData, tbody, clamNum);
-                actualizarContador('next_clam_presion', clamNum);
+            const tbody = document.getElementById('tbody-presion');
+            const rowData = { inicio, termino, llegada, despacho };
+            
+            datosEnsayos.visual[ensayoActual].presionambiente.push(rowData);
+            const clamNum = datosEnsayos.visual[ensayoActual].presionambiente.length;
+            
+            agregarFilaPresionAmbiente(rowData, tbody, clamNum);
+            actualizarContador('next_clam_presion', clamNum);
 
-                document.getElementById('pv_inicio').value = '';
-                document.getElementById('pv_termino').value = '';
-                document.getElementById('pv_llegada').value = '';
-                document.getElementById('pv_despacho').value = '';
-                document.getElementById('pv_inicio').focus();
-            } else {
-                Swal.fire({ title: 'Atención', text: 'Todos los campos son obligatorios', icon: 'warning' });
-            }
+            document.getElementById('reg_presion_amb_inicio').value = '';
+            document.getElementById('reg_presion_amb_termino').value = '';
+            document.getElementById('reg_presion_amb_llegada').value = '';
+            document.getElementById('reg_presion_amb_despacho').value = '';
+            document.getElementById('reg_presion_amb_inicio').focus();
         });
     }
 
     // ========================================
-    // AÑADIR PRESIÓN FRUTA
+    // AÑADIR PRESIÓN FRUTA - SIN VALIDACIONES
     // ========================================
     const btnAddPresionFruta = document.getElementById('btn-add-presion-fruta');
     if (btnAddPresionFruta) {
@@ -1732,34 +1653,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            const inicio = document.getElementById('pvf_inicio').value;
-            const termino = document.getElementById('pvf_termino').value;
-            const llegada = document.getElementById('pvf_llegada').value;
-            const despacho = document.getElementById('pvf_despacho').value;
+            const inicio = document.getElementById('reg_presion_fruta_inicio').value || '';
+            const termino = document.getElementById('reg_presion_fruta_termino').value || '';
+            const llegada = document.getElementById('reg_presion_fruta_llegada').value || '';
+            const despacho = document.getElementById('reg_presion_fruta_despacho').value || '';
 
-            if (inicio && termino && llegada && despacho) {
-                const tbody = document.getElementById('tbody-presion-fruta');
-                const rowData = { inicio, termino, llegada, despacho };
-                
-                datosEnsayos.visual[ensayoActual].presionfruta.push(rowData);
-                const clamNum = datosEnsayos.visual[ensayoActual].presionfruta.length;
-                
-                agregarFilaPresionFruta(rowData, tbody, clamNum);
-                actualizarContador('next_clam_presion_fruta', clamNum);
+            const tbody = document.getElementById('tbody-presion-fruta');
+            const rowData = { inicio, termino, llegada, despacho };
+            
+            datosEnsayos.visual[ensayoActual].presionfruta.push(rowData);
+            const clamNum = datosEnsayos.visual[ensayoActual].presionfruta.length;
+            
+            agregarFilaPresionFruta(rowData, tbody, clamNum);
+            actualizarContador('next_clam_presion_fruta', clamNum);
 
-                document.getElementById('pvf_inicio').value = '';
-                document.getElementById('pvf_termino').value = '';
-                document.getElementById('pvf_llegada').value = '';
-                document.getElementById('pvf_despacho').value = '';
-                document.getElementById('pvf_inicio').focus();
-            } else {
-                Swal.fire({ title: 'Atención', text: 'Todos los campos son obligatorios', icon: 'warning' });
-            }
+            document.getElementById('reg_presion_fruta_inicio').value = '';
+            document.getElementById('reg_presion_fruta_termino').value = '';
+            document.getElementById('reg_presion_fruta_llegada').value = '';
+            document.getElementById('reg_presion_fruta_despacho').value = '';
+            document.getElementById('reg_presion_fruta_inicio').focus();
         });
     }
 
     // ========================================
-    // AÑADIR OBSERVACIÓN
+    // AÑADIR OBSERVACIÓN - SIN VALIDACIONES
     // ========================================
     const btnAddObs = document.getElementById('btn-add-obs');
     if (btnAddObs) {
@@ -1773,28 +1690,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            const observacion = document.getElementById('v_observacion_texto').value;
+            const observacion = document.getElementById('reg_observacion_texto').value || '';
 
-            if (observacion) {
-                const tbody = document.getElementById('tbody-observacion');
-                const rowData = { observacion };
-                
-                datosEnsayos.visual[ensayoActual].observacion.push(rowData);
-                const clamNum = datosEnsayos.visual[ensayoActual].observacion.length;
-                
-                agregarFilaObservacion(rowData, tbody, clamNum);
-                actualizarContador('next_clam_obs', clamNum);
+            const tbody = document.getElementById('tbody-observacion');
+            const rowData = { observacion };
+            
+            datosEnsayos.visual[ensayoActual].observacion.push(rowData);
+            const clamNum = datosEnsayos.visual[ensayoActual].observacion.length;
+            
+            agregarFilaObservacion(rowData, tbody, clamNum);
+            actualizarContador('next_clam_obs', clamNum);
 
-                document.getElementById('v_observacion_texto').value = '';
-                document.getElementById('v_observacion_texto').focus();
-            } else {
-                Swal.fire({ title: 'Atención', text: 'Debe ingresar la observación', icon: 'warning' });
-            }
+            document.getElementById('reg_observacion_texto').value = '';
+            document.getElementById('reg_observacion_texto').focus();
         });
     }
 
     // ========================================
-    // 8. GUARDADO FINAL
+    // 8. GUARDADO FINAL CON LÓGICA DE JOIN
     // ========================================
     const btnGuardarGeneral = document.getElementById('btn-guardar-registro');
 
@@ -1849,7 +1762,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Validar consistencia de datos
+            // Validar consistencia de datos (EXCEPTO jarras)
             for (let numEnsayo in datosDelTipo) {
                 const ensayo = datosDelTipo[numEnsayo];
                 
@@ -1862,7 +1775,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (ensayo[seccion] && ensayo[seccion].length > 0 && ensayo[seccion].length !== totalVisual) {
                             Swal.fire({
                                 title: 'Inconsistencia de Datos',
-                                text: `El Ensayo ${numEnsayo} tiene ${totalVisual} registros en Visual, pero ${ensayo[seccion].length} en ${seccion}. Todos deben tener la misma cantidad.`,
+                                text: `El Ensayo ${numEnsayo} tiene ${totalVisual} registros en Visual, pero ${ensayo[seccion].length} en ${seccion}. Todos deben tener la misma cantidad (excepto Jarras).`,
                                 icon: 'error',
                                 confirmButtonColor: '#d33'
                             });
@@ -1880,9 +1793,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (ensayo.visual && ensayo.visual.length > 0) {
                     
+                    // JOIN entre visual y jarras por n_jarra
                     const registrosCombinados = ensayo.visual.map((visual, index) => {
                         
-                        const jarraCorrespondiente = ensayo.jarras ? ensayo.jarras.find(j => j.jarra === visual.jarra) : null;
+                        // Buscar jarras tipo C y T para esta jarra
+                        const jarraC = ensayo.jarras ? ensayo.jarras.find(j => j.jarra === visual.jarra && j.tipo === 'C') : null;
+                        const jarraT = ensayo.jarras ? ensayo.jarras.find(j => j.jarra === visual.jarra && j.tipo === 'T') : null;
+                        
                         const tempCorrespondiente = ensayo.temperaturas && ensayo.temperaturas[index] ? ensayo.temperaturas[index] : null;
                         const tiempoCorrespondiente = ensayo.tiempos && ensayo.tiempos[index] ? ensayo.tiempos[index] : null;
                         const humedadCorrespondiente = ensayo.humedad && ensayo.humedad[index] ? ensayo.humedad[index] : null;
@@ -1892,38 +1809,34 @@ document.addEventListener('DOMContentLoaded', () => {
                         const obsCorrespondiente = ensayo.observacion && ensayo.observacion[index] ? ensayo.observacion[index] : null;
                         
                         return {
-                            clamshell_numero: index + 1,
-                            jarra: {
-                                numero: parseInt(visual.jarra),
-                                peso_bruto: {
-                                    p1: parseFloat(visual.p1),
-                                    p2: parseFloat(visual.p2),
-                                    llegada_acopio: parseFloat(visual.llegada),
-                                    despacho_acopio: parseFloat(visual.despacho)
-                                },
-                                tiempo_llenado: jarraCorrespondiente ? {
-                                    observacion: jarraCorrespondiente.observacion,
-                                    hora_inicio: jarraCorrespondiente.inicio,
-                                    hora_termino: jarraCorrespondiente.termino,
-                                    tiempo_empleado: jarraCorrespondiente.tiempo
-                                } : null
-                            },
+                            n_clamshell: index + 1,
+                            n_jarra: parseInt(visual.jarra) || 0,
+                            peso_1: parseFloat(visual.p1) || 0,
+                            peso_2: parseFloat(visual.p2) || 0,
+                            llegada_acopio: parseFloat(visual.llegada) || 0,
+                            despacho_acopio: parseFloat(visual.despacho) || 0,
+                            inicio_c: jarraC ? jarraC.inicio : '',
+                            termino_c: jarraC ? jarraC.termino : '',
+                            min_c: jarraC ? jarraC.tiempo : '',
+                            inicio_t: jarraT ? jarraT.inicio : '',
+                            termino_t: jarraT ? jarraT.termino : '',
+                            min_t: jarraT ? jarraT.tiempo : '',
                             temperatura_muestra: tempCorrespondiente ? {
                                 inicio: {
-                                    ambiente: parseFloat(tempCorrespondiente.inicio_amb),
-                                    pulpa: parseFloat(tempCorrespondiente.inicio_pul)
+                                    ambiente: parseFloat(tempCorrespondiente.inicio_amb) || null,
+                                    pulpa: parseFloat(tempCorrespondiente.inicio_pul) || null
                                 },
                                 termino: {
-                                    ambiente: parseFloat(tempCorrespondiente.termino_amb),
-                                    pulpa: parseFloat(tempCorrespondiente.termino_pul)
+                                    ambiente: parseFloat(tempCorrespondiente.termino_amb) || null,
+                                    pulpa: parseFloat(tempCorrespondiente.termino_pul) || null
                                 },
                                 llegada_acopio: {
-                                    ambiente: parseFloat(tempCorrespondiente.llegada_amb),
-                                    pulpa: parseFloat(tempCorrespondiente.llegada_pul)
+                                    ambiente: parseFloat(tempCorrespondiente.llegada_amb) || null,
+                                    pulpa: parseFloat(tempCorrespondiente.llegada_pul) || null
                                 },
                                 despacho_acopio: {
-                                    ambiente: parseFloat(tempCorrespondiente.despacho_amb),
-                                    pulpa: parseFloat(tempCorrespondiente.despacho_pul)
+                                    ambiente: parseFloat(tempCorrespondiente.despacho_amb) || null,
+                                    pulpa: parseFloat(tempCorrespondiente.despacho_pul) || null
                                 }
                             } : null,
                             tiempos: tiempoCorrespondiente ? {
@@ -1934,39 +1847,70 @@ document.addEventListener('DOMContentLoaded', () => {
                                 despacho_acopio: tiempoCorrespondiente.despacho || null
                             } : null,
                             humedad_relativa: humedadCorrespondiente ? {
-                                inicio: parseFloat(humedadCorrespondiente.inicio),
-                                termino: parseFloat(humedadCorrespondiente.termino),
-                                llegada_acopio: parseFloat(humedadCorrespondiente.llegada),
-                                despacho_acopio: parseFloat(humedadCorrespondiente.despacho)
+                                inicio: parseFloat(humedadCorrespondiente.inicio) || null,
+                                termino: parseFloat(humedadCorrespondiente.termino) || null,
+                                llegada_acopio: parseFloat(humedadCorrespondiente.llegada) || null,
+                                despacho_acopio: parseFloat(humedadCorrespondiente.despacho) || null
                             } : null,
                             temperatura_ambiente: tempAmbCorrespondiente ? {
-                                inicio: parseFloat(tempAmbCorrespondiente.inicio),
-                                termino: parseFloat(tempAmbCorrespondiente.termino),
-                                llegada_acopio: parseFloat(tempAmbCorrespondiente.llegada),
-                                despacho_acopio: parseFloat(tempAmbCorrespondiente.despacho)
+                                inicio: parseFloat(tempAmbCorrespondiente.inicio) || null,
+                                termino: parseFloat(tempAmbCorrespondiente.termino) || null,
+                                llegada_acopio: parseFloat(tempAmbCorrespondiente.llegada) || null,
+                                despacho_acopio: parseFloat(tempAmbCorrespondiente.despacho) || null
                             } : null,
                             presion_vapor_ambiente: presionAmbCorrespondiente ? {
-                                inicio: parseFloat(presionAmbCorrespondiente.inicio),
-                                termino: parseFloat(presionAmbCorrespondiente.termino),
-                                llegada_acopio: parseFloat(presionAmbCorrespondiente.llegada),
-                                despacho_acopio: parseFloat(presionAmbCorrespondiente.despacho)
+                                inicio: parseFloat(presionAmbCorrespondiente.inicio) || null,
+                                termino: parseFloat(presionAmbCorrespondiente.termino) || null,
+                                llegada_acopio: parseFloat(presionAmbCorrespondiente.llegada) || null,
+                                despacho_acopio: parseFloat(presionAmbCorrespondiente.despacho) || null
                             } : null,
                             presion_vapor_fruta: presionFrutaCorrespondiente ? {
-                                inicio: parseFloat(presionFrutaCorrespondiente.inicio),
-                                termino: parseFloat(presionFrutaCorrespondiente.termino),
-                                llegada_acopio: parseFloat(presionFrutaCorrespondiente.llegada),
-                                despacho_acopio: parseFloat(presionFrutaCorrespondiente.despacho)
+                                inicio: parseFloat(presionFrutaCorrespondiente.inicio) || null,
+                                termino: parseFloat(presionFrutaCorrespondiente.termino) || null,
+                                llegada_acopio: parseFloat(presionFrutaCorrespondiente.llegada) || null,
+                                despacho_acopio: parseFloat(presionFrutaCorrespondiente.despacho) || null
                             } : null,
                             observacion: obsCorrespondiente ? obsCorrespondiente.observacion : null
                         };
                     });
                     
+                    // Caso BACKUP: Jarras con tiempos pero sin peso
+                    if (ensayo.jarras) {
+                        ensayo.jarras.forEach(jarra => {
+                            const yaExiste = registrosCombinados.some(r => r.n_jarra === parseInt(jarra.jarra));
+                            if (!yaExiste) {
+                                const esC = jarra.tipo === 'C';
+                                const esT = jarra.tipo === 'T';
+                                
+                                registrosCombinados.push({
+                                    n_clamshell: 0,
+                                    n_jarra: parseInt(jarra.jarra) || 0,
+                                    peso_1: 0.0,
+                                    peso_2: 0.0,
+                                    llegada_acopio: 0.0,
+                                    despacho_acopio: 0.0,
+                                    inicio_c: esC ? jarra.inicio : '',
+                                    termino_c: esC ? jarra.termino : '',
+                                    min_c: esC ? jarra.tiempo : '',
+                                    inicio_t: esT ? jarra.inicio : '',
+                                    termino_t: esT ? jarra.termino : '',
+                                    min_t: esT ? jarra.tiempo : '',
+                                    temperatura_muestra: null,
+                                    tiempos: null,
+                                    humedad_relativa: null,
+                                    temperatura_ambiente: null,
+                                    presion_vapor_ambiente: null,
+                                    presion_vapor_fruta: null,
+                                    observacion: null
+                                });
+                            }
+                        });
+                    }
+                    
                     ensayosConDatos.push({
                         ensayo_numero: parseInt(numEnsayo),
                         ensayo_nombre: `Ensayo ${numEnsayo}`,
-                        registros: registrosCombinados,
-                        total_registros: registrosCombinados.length,
-                        jarras_unicas: ensayo.jarras ? ensayo.jarras.length : 0
+                        registros: registrosCombinados
                     });
                 }
             }
@@ -1987,12 +1931,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     campo: document.getElementById('reg_traz_campo').value,
                     libre: document.getElementById('reg_traz_libre').value || null
                 },
-                ensayos: ensayosConDatos,
-                resumen: {
-                    total_ensayos: ensayosConDatos.length,
-                    total_registros: ensayosConDatos.reduce((sum, e) => sum + e.total_registros, 0),
-                    total_jarras_unicas: ensayosConDatos.reduce((sum, e) => sum + e.jarras_unicas, 0)
-                }
+                ensayos: ensayosConDatos
             };
 
             console.log("═══════════════════════════════════════");
@@ -2000,6 +1939,33 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("═══════════════════════════════════════");
             console.log(JSON.stringify(payload, null, 2));
             console.log("═══════════════════════════════════════");
+            
+            // ENVÍO FETCH
+            // const ENDPOINT_URL = 'TU_URL_DE_GOOGLE_APPS_SCRIPT_AQUI';
+            // fetch(ENDPOINT_URL, {
+            //     method: 'POST',
+            //     mode: 'no-cors',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify(payload)
+            // })
+            // .then(() => {
+            //     Swal.fire({
+            //         title: '¡Registro Exitoso!',
+            //         text: 'Los datos se han enviado correctamente.',
+            //         icon: 'success',
+            //         confirmButtonColor: '#2f7cc0',
+            //         confirmButtonText: 'Entendido'
+            //     });
+            // })
+            // .catch((error) => {
+            //     console.error('Error al enviar datos:', error);
+            //     Swal.fire({
+            //         title: 'Error',
+            //         text: 'Hubo un problema al enviar los datos',
+            //         icon: 'error',
+            //         confirmButtonColor: '#d33'
+            //     });
+            // });
             
             Swal.fire({
                 title: '¡Registro Exitoso!',

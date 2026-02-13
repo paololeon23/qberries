@@ -126,7 +126,39 @@ header {
     margin-bottom: 30px; 
     border-bottom: 2px solid var(--primary);
     padding-bottom: 10px;
+    justify-content: space-between;
 }
+
+
+.status-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+}
+
+/* Estado Online */
+.status-card.online {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border-color: #a5d6a7;
+}
+.status-card.online #status-dot { color: #4caf50; }
+
+/* Estado Offline */
+.status-card.offline {
+    background-color: #ffebee;
+    color: #c62828;
+    border-color: #ffcdd2;
+}
+.status-card.offline #status-dot { color: #f44336; }
+
 
 .menu-btn { 
     background: var(--primary); 
