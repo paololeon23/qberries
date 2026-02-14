@@ -129,18 +129,40 @@ header {
     justify-content: space-between;
 }
 
+/* INTERN ESTILOS*/
 
 .status-card {
     display: flex;
+    flex-direction: column; /* Alineación vertical */
     align-items: center;
-    gap: 8px;
-    padding: 5px 12px;
-    border-radius: 8px;
-    font-size: 0.85rem;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 0.75rem; /* Un poco más pequeño para que encaje bien */
     font-weight: bold;
     border: 1px solid #ddd;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     transition: all 0.3s ease;
+    min-width: 90px;
+    line-height: 1.2;
+}
+
+/* Contenedor para el punto y el texto (Fila superior) */
+.status-info {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+/* El contador de pendientes (Fila inferior) */
+#pending-count {
+    background-color: rgba(0, 0, 0, 0.1); /* Fondo sutil */
+    padding: 2px 6px;
+    border-radius: 6px;
+    width: 100%;
+    text-align: center;
+    font-size: 0.7rem;
 }
 
 /* Estado Online */
@@ -150,6 +172,11 @@ header {
     border-color: #a5d6a7;
 }
 .status-card.online #status-dot { color: #4caf50; }
+/* En online, el badge de pendientes puede ser azul para resaltar */
+.status-card.online #pending-count {
+    color: rgb(0, 0, 0);
+    margin-top: 5px;
+}
 
 /* Estado Offline */
 .status-card.offline {
@@ -158,6 +185,12 @@ header {
     border-color: #ffcdd2;
 }
 .status-card.offline #status-dot { color: #f44336; }
+/* En offline, el badge se pone rojo oscuro */
+.status-card.offline #pending-count {
+    background-color: #c62828;
+    color: white;
+}
+/* fin */
 
 
 .menu-btn { 

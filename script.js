@@ -1,5 +1,12 @@
+import { saveLocal, updateUI } from './network.js';
+
 document.addEventListener('DOMContentLoaded', () => {
-        
+
+    // ========================================
+    // 0. FLAG PARA AVISO ANTES DE SALIR
+    // ========================================
+    window.formHasChanges = false;
+
     // ========================================
     // 1. INICIALIZACIÓN DE ICONOS
     // ========================================
@@ -1267,6 +1274,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.isConfirmed) {
                 datosEnsayos[tipoActual][ensayoActual][tipo].splice(num - 1, 1);
                 restaurarDatosEnsayo(tipoActual, ensayoActual);
+                window.formHasChanges = true;
                 
                 Swal.fire({
                     title: 'Eliminado',
@@ -1307,6 +1315,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         datosEnsayos[tipoActual][ensayoActual][tipo].push({...data});
         restaurarDatosEnsayo(tipoActual, ensayoActual);
+        window.formHasChanges = true;
     }
 
     // ========================================
@@ -1394,6 +1403,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             agregarFilaVisual(rowData, tbody, clamNum);
             actualizarContador('next_clam_visual', clamNum);
+            window.formHasChanges = true;
 
             document.getElementById('reg_visual_n_jarra').value = '';
             document.getElementById('reg_visual_peso_1').value = '';
@@ -1433,6 +1443,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             agregarFilaJarras(rowData, tbody, rowNum);
             actualizarContador('next_row_jarras', rowNum);
+            window.formHasChanges = true;
 
             document.getElementById('reg_jarras_n_jarra').value = '';
             document.getElementById('reg_jarras_tipo').value = '';
@@ -1475,6 +1486,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             agregarFilaTemperaturas(rowData, tbody, clamNum);
             actualizarContador('next_clam_temp', clamNum);
+            window.formHasChanges = true;
 
             document.getElementById('reg_temp_inicio_amb').value = '';
             document.getElementById('reg_temp_inicio_pul').value = '';
@@ -1517,6 +1529,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             agregarFilaTiempos(rowData, tbody, clamNum);
             actualizarContador('next_clam_tiempos', clamNum);
+            window.formHasChanges = true;
 
             document.getElementById('reg_tiempos_inicio_c').value = '';
             document.getElementById('reg_tiempos_perdida_peso').value = '';
@@ -1555,6 +1568,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             agregarFilaHumedad(rowData, tbody, clamNum);
             actualizarContador('next_clam_humedad', clamNum);
+            window.formHasChanges = true;
 
             document.getElementById('reg_humedad_inicio').value = '';
             document.getElementById('reg_humedad_termino').value = '';
@@ -1592,6 +1606,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             agregarFilaTempAmbiente(rowData, tbody, clamNum);
             actualizarContador('next_clam_temp_amb', clamNum);
+            window.formHasChanges = true;
 
             document.getElementById('reg_temp_amb_inicio').value = '';
             document.getElementById('reg_temp_amb_termino').value = '';
@@ -1629,6 +1644,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             agregarFilaPresionAmbiente(rowData, tbody, clamNum);
             actualizarContador('next_clam_presion', clamNum);
+            window.formHasChanges = true;
 
             document.getElementById('reg_presion_amb_inicio').value = '';
             document.getElementById('reg_presion_amb_termino').value = '';
@@ -1666,6 +1682,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             agregarFilaPresionFruta(rowData, tbody, clamNum);
             actualizarContador('next_clam_presion_fruta', clamNum);
+            window.formHasChanges = true;
 
             document.getElementById('reg_presion_fruta_inicio').value = '';
             document.getElementById('reg_presion_fruta_termino').value = '';
@@ -1700,6 +1717,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             agregarFilaObservacion(rowData, tbody, clamNum);
             actualizarContador('next_clam_obs', clamNum);
+            window.formHasChanges = true;
 
             document.getElementById('reg_observacion_texto').value = '';
             document.getElementById('reg_observacion_texto').focus();
@@ -1785,8 +1803,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Construir array de ensayos con datos
-            const ensayosConDatos = [];
+            // Construir filas planas de 54 columnas para Excel
+            const allRows = [];
             
             for (let numEnsayo in datosDelTipo) {
                 const ensayo = datosDelTipo[numEnsayo];
@@ -1907,72 +1925,67 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     }
                     
-                    ensayosConDatos.push({
-                        ensayo_numero: parseInt(numEnsayo),
-                        ensayo_nombre: `Ensayo ${numEnsayo}`,
-                        registros: registrosCombinados
+                    const fecha = document.getElementById('reg_fecha').value;
+                    const responsable = document.getElementById('reg_responsable').value;
+                    const guia_remision = document.getElementById('reg_guia_remision').value;
+                    const variedad = document.getElementById('reg_variedad').value;
+                    const placa_vehiculo = document.getElementById('reg_placa').value;
+                    const hora_inicio = document.getElementById('reg_hora_inicio').value;
+                    const dias_precosecha = document.getElementById('reg_dias_precosecha').value || '';
+                    const traz_etapa = document.getElementById('reg_traz_etapa').value;
+                    const traz_campo = document.getElementById('reg_traz_campo').value;
+                    const traz_libre = document.getElementById('reg_traz_libre').value || '';
+                    const ensayo_numero = parseInt(numEnsayo);
+                    const ensayo_nombre = `Ensayo ${numEnsayo}`;
+
+                    // Convertir cada registro a fila plana de 54 columnas para Excel
+                    registrosCombinados.forEach(reg => {
+                        const tm = reg.temperatura_muestra;
+                        const ti = reg.tiempos;
+                        const hr = reg.humedad_relativa;
+                        const ta = reg.temperatura_ambiente;
+                        const pva = reg.presion_vapor_ambiente;
+                        const pvf = reg.presion_vapor_fruta;
+
+                        const row = [
+                            fecha, responsable, guia_remision, variedad, placa_vehiculo, hora_inicio, dias_precosecha,
+                            traz_etapa, traz_campo, traz_libre,
+                            ensayo_numero, ensayo_nombre,
+                            reg.n_clamshell ?? '', reg.n_jarra ?? '',
+                            reg.peso_1 ?? '', reg.peso_2 ?? '', reg.llegada_acopio ?? '', reg.despacho_acopio ?? '',
+                            reg.inicio_c || '', reg.termino_c || '', reg.min_c || '',
+                            reg.inicio_t || '', reg.termino_t || '', reg.min_t || '',
+                            (tm?.inicio?.ambiente != null) ? tm.inicio.ambiente : '', (tm?.inicio?.pulpa != null) ? tm.inicio.pulpa : '',
+                            (tm?.termino?.ambiente != null) ? tm.termino.ambiente : '', (tm?.termino?.pulpa != null) ? tm.termino.pulpa : '',
+                            (tm?.llegada_acopio?.ambiente != null) ? tm.llegada_acopio.ambiente : '', (tm?.llegada_acopio?.pulpa != null) ? tm.llegada_acopio.pulpa : '',
+                            (tm?.despacho_acopio?.ambiente != null) ? tm.despacho_acopio.ambiente : '', (tm?.despacho_acopio?.pulpa != null) ? tm.despacho_acopio.pulpa : '',
+                            (ti?.inicio_cosecha) || '', (ti?.perdida_peso) || '', (ti?.termino_cosecha) || '', (ti?.llegada_acopio) || '', (ti?.despacho_acopio) || '',
+                            (hr?.inicio != null) ? hr.inicio : '', (hr?.termino != null) ? hr.termino : '', (hr?.llegada_acopio != null) ? hr.llegada_acopio : '', (hr?.despacho_acopio != null) ? hr.despacho_acopio : '',
+                            (ta?.inicio != null) ? ta.inicio : '', (ta?.termino != null) ? ta.termino : '', (ta?.llegada_acopio != null) ? ta.llegada_acopio : '', (ta?.despacho_acopio != null) ? ta.despacho_acopio : '',
+                            (pva?.inicio != null) ? pva.inicio : '', (pva?.termino != null) ? pva.termino : '', (pva?.llegada_acopio != null) ? pva.llegada_acopio : '', (pva?.despacho_acopio != null) ? pva.despacho_acopio : '',
+                            (pvf?.inicio != null) ? pvf.inicio : '', (pvf?.termino != null) ? pvf.termino : '', (pvf?.llegada_acopio != null) ? pvf.llegada_acopio : '', (pvf?.despacho_acopio != null) ? pvf.despacho_acopio : '',
+                            reg.observacion || ''
+                        ];
+                        allRows.push(row);
                     });
                 }
             }
-            
-            const payload = {
-                metadata: {
-                    fecha: document.getElementById('reg_fecha').value,
-                    responsable: document.getElementById('reg_responsable').value,
-                    guia_remision: document.getElementById('reg_guia_remision').value,
-                    variedad: document.getElementById('reg_variedad').value,
-                    placa_vehiculo: document.getElementById('reg_placa').value,
-                    hora_inicio: document.getElementById('reg_hora_inicio').value,
-                    dias_precosecha: document.getElementById('reg_dias_precosecha').value || null,
-                    tipo_medicion: tipoMedicion
-                },
-                trazabilidad: {
-                    etapa: document.getElementById('reg_traz_etapa').value,
-                    campo: document.getElementById('reg_traz_campo').value,
-                    libre: document.getElementById('reg_traz_libre').value || null
-                },
-                ensayos: ensayosConDatos
-            };
 
-            console.log("═══════════════════════════════════════");
-            console.log("📦 JSON FINAL ORDENADO PARA BACKEND:");
-            console.log("═══════════════════════════════════════");
-            console.log(JSON.stringify(payload, null, 2));
-            console.log("═══════════════════════════════════════");
-            
-            // ENVÍO FETCH
-            // const ENDPOINT_URL = 'TU_URL_DE_GOOGLE_APPS_SCRIPT_AQUI';
-            // fetch(ENDPOINT_URL, {
-            //     method: 'POST',
-            //     mode: 'no-cors',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify(payload)
-            // })
-            // .then(() => {
-            //     Swal.fire({
-            //         title: '¡Registro Exitoso!',
-            //         text: 'Los datos se han enviado correctamente.',
-            //         icon: 'success',
-            //         confirmButtonColor: '#2f7cc0',
-            //         confirmButtonText: 'Entendido'
-            //     });
-            // })
-            // .catch((error) => {
-            //     console.error('Error al enviar datos:', error);
-            //     Swal.fire({
-            //         title: 'Error',
-            //         text: 'Hubo un problema al enviar los datos',
-            //         icon: 'error',
-            //         confirmButtonColor: '#d33'
-            //     });
-            // });
-            
+            // Guardar localmente (y sincronizar si hay red)
+            saveLocal({ rows: allRows });
+            updateUI();
+            window.formHasChanges = false;
+
             Swal.fire({
-                title: '¡Registro Exitoso!',
-                text: 'Los datos se han guardado correctamente.',
+                title: '¡Registro Guardado!',
+                html: 'Los datos se han guardado correctamente.<br><small>Se enviarán al servidor cuando haya conexión.</small>',
                 icon: 'success',
                 confirmButtonColor: '#2f7cc0',
                 confirmButtonText: 'Entendido'
+            }).then(() => {
+                document.getElementById('cosecha-form').reset();
+                campoFecha.value = new Date().toISOString().split('T')[0];
+                window.location.reload();
             });
         });
     }

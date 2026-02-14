@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro de Cosecha - Agrovision</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2f7cc0">
     <link rel="stylesheet" href="librerias/sweetalert2.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -31,18 +33,22 @@
             <h1>MTTP ARÁNDANO</h1>
             
             <div id="network-status-container" class="status-card online">
-                <span id="status-dot">●</span>
-                <span id="status-text">En línea</span>
+                <div class="status-info">
+                    <span id="status-dot">●</span>
+                    <span id="status-text">En línea</span>
+                </div>
+                
+                <span id="pending-count">Pendientes: 0</span>
             </div>
         </header>
-
+        
         <form id="cosecha-form">
 
             <div class="form-group main-card form-inline">
                 <label for="tipo_medicion">
                     <i data-lucide="layers"></i> Tipo de Medición:
                 </label>
-                <select id="tipo_medicion" class="select-modern" required>
+                <select id="tipo_medicion" name="tipo_medicion" class="select-modern" required>
                     <option value="" disabled selected>Seleccione para comenzar...</option>
                     <option value="visual">Calibrado Visual</option>
                     <option value="acopio">Calibrado Acopio</option>
@@ -54,11 +60,11 @@
                 <div class="row">
                     <div class="col">
                         <label><i data-lucide="calendar"></i> Fecha</label>
-                        <input type="date" id="reg_fecha" required>
+                        <input type="date" id="reg_fecha" name="reg_fecha" required>
                     </div>
                     <div class="col">
                         <label><i data-lucide="user"></i> Responsable</label>
-                        <input type="text" id="reg_responsable" placeholder="Antony Siesquén" required>
+                        <input type="text" id="reg_responsable" name="reg_responsable" placeholder="Antony Siesquén" required>
                     </div>
                 </div>
 
@@ -66,7 +72,7 @@
                     <div class="col">
                         <label><i data-lucide="map-pin"></i> Trazabilidad</label>
                         <div class="input-group-triple">
-                            <select id="reg_traz_etapa" required>
+                            <select id="reg_traz_etapa" name="reg_traz_etapa" required>
                                 <option value="" disabled selected>Etapa</option>
                                 <option value="1">E1</option>
                                 <option value="2">E2</option>
@@ -79,7 +85,7 @@
                                 <option value="9">E9</option>
                             </select>
 
-                            <select id="reg_traz_campo" required>
+                            <select id="reg_traz_campo" name="reg_traz_campo" required>
                                 <option value="" disabled selected>Campo</option>
                                 <option value="1">C1</option>
                                 <option value="2">C2</option>
@@ -92,12 +98,12 @@
                                 <option value="9">C9</option>
                             </select>
 
-                            <input type="text" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')"  id="reg_traz_libre" placeholder="T4A" maxlength="3" style="text-transform: uppercase;">
+                            <input type="text" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')"  id="reg_traz_libre" name="reg_traz_libre" placeholder="T4A" maxlength="3" style="text-transform: uppercase;">
                         </div>
                     </div>
                     <div class="col">
                         <label><i data-lucide="file-text"></i> Guía Remisión Acopio</label>
-                        <input type="text" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" id="reg_guia_remision" placeholder="200416" maxlength="6" required>
+                        <input type="text" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" id="reg_guia_remision" name="reg_guia_remision" placeholder="200416" maxlength="6" required>
                     </div>
                 </div>
 
@@ -105,14 +111,14 @@
                     <div class="col">
                         <label><i data-lucide="leaf"></i> Variedad</label>
                         <div class="input-group-triple">
-                            <select id="reg_variedad" required>
+                            <select id="reg_variedad" name="reg_variedad" required>
                                 <option value="" disabled selected>--- Seleccione Variedad ---</option>
                                 </select>
                         </div>
                     </div>
                     <div class="col">
                         <label><i data-lucide="truck"></i> Placa Vehículo</label>
-                        <input type="text" oninput="this.value = this.value.replace(/[^A-Za-z0-9-]/g, '')" id="reg_placa" placeholder="9578-PK" maxlength="7" style="text-transform: uppercase;" required>
+                        <input type="text" oninput="this.value = this.value.replace(/[^A-Za-z0-9-]/g, '')" id="reg_placa" name="reg_placa" placeholder="9578-PK" maxlength="7" style="text-transform: uppercase;" required>
                     </div>
                 </div>
 
@@ -120,11 +126,11 @@
 
                     <div class="col">
                         <label><i data-lucide="clock"></i> Hora Inicio General</label>
-                        <input type="time" id="reg_hora_inicio" value="07:15" required>
+                        <input type="time" id="reg_hora_inicio" name="reg_hora_inicio" value="07:15" required>
                     </div>
                     <div class="col">
                         <label><i data-lucide="calendar-days"></i> Días Precosecha / N°</label>
-                        <input type="text" id="reg_dias_precosecha" placeholder="6, 29">
+                        <input type="text" id="reg_dias_precosecha" name="reg_dias_precosecha" placeholder="6, 29">
                     </div>
                 </div>
             </section>
@@ -135,7 +141,7 @@
                 <label for="tipo_medicion">
                     <i data-lucide="layers"></i> Rótulo de Muestra:
                 </label>
-                    <select id="reg_rotulo_ensayo" class="select-modern" required>
+                    <select id="reg_rotulo_ensayo" name="reg_rotulo_ensayo" class="select-modern" required>
                         <option value="" disabled selected>Seleccione para comenzar...</option>
                         <option value="1">Ensayo 1</option>
                         <option value="2">Ensayo 2</option>
@@ -175,20 +181,20 @@
                                 <span id="next_row_jarras">1</span> 
                             </td>
                             <td>
-                                <input type="number" id="reg_jarras_n_jarra" placeholder="ID Jarra" inputmode="numeric">
+                                <input type="number" id="reg_jarras_n_jarra" name="reg_jarras_n_jarra" placeholder="ID Jarra" inputmode="numeric">
                             </td>
                             <td>
-                                <select id="reg_jarras_tipo" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <select id="reg_jarras_tipo" name="reg_jarras_tipo" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                                     <option value="" disabled selected>Selecciona...</option>
                                     <option value="C">Cosecha</option>
                                     <option value="T">Traslado</option>
                                 </select>
                             </td>
                             <td>
-                                <input type="time" id="reg_jarras_inicio">
+                                <input type="time" id="reg_jarras_inicio" name="reg_jarras_inicio">
                             </td>
                             <td>
-                                <input type="time" id="reg_jarras_termino">
+                                <input type="time" id="reg_jarras_termino" name="reg_jarras_termino">
                             </td>
                             <td>
                                 <span id="reg_jarras_tiempo" style="font-weight: bold; color: #555;">0'</span>
@@ -238,11 +244,11 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_visual">0</span></td>
-                            <td><input type="number" id="reg_visual_n_jarra" placeholder="0" inputmode="numeric"></td>
-                            <td><input type="number" id="reg_visual_peso_1" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_visual_peso_2" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_visual_llegada_acopio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_visual_despacho_acopio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_visual_n_jarra" name="reg_visual_n_jarra" placeholder="0" inputmode="numeric"></td>
+                            <td><input type="number" id="reg_visual_peso_1" name="reg_visual_peso_1" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_visual_peso_2" name="reg_visual_peso_2" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_visual_llegada_acopio" name="reg_visual_llegada_acopio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_visual_despacho_acopio" name="reg_visual_despacho_acopio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-visual" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -285,11 +291,11 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_tiempos">0</span></td>
-                            <td><input type="time" id="reg_tiempos_inicio_c"></td>
-                            <td><input type="time" id="reg_tiempos_perdida_peso"></td>
-                            <td><input type="time" id="reg_tiempos_termino_c"></td>
-                            <td><input type="time" id="reg_tiempos_llegada_acopio"></td>
-                            <td><input type="time" id="reg_tiempos_despacho_acopio"></td>
+                            <td><input type="time" id="reg_tiempos_inicio_c" name="reg_tiempos_inicio_c"></td>
+                            <td><input type="time" id="reg_tiempos_perdida_peso" name="reg_tiempos_perdida_peso"></td>
+                            <td><input type="time" id="reg_tiempos_termino_c" name="reg_tiempos_termino_c"></td>
+                            <td><input type="time" id="reg_tiempos_llegada_acopio" name="reg_tiempos_llegada_acopio"></td>
+                            <td><input type="time" id="reg_tiempos_despacho_acopio" name="reg_tiempos_despacho_acopio"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-tiempos" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -341,14 +347,14 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_temp">0</span></td>
-                            <td><input type="number" id="reg_temp_inicio_amb" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="reg_temp_inicio_pul" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="reg_temp_termino_amb" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="reg_temp_termino_pul" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="reg_temp_llegada_amb" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="reg_temp_llegada_pul" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="reg_temp_despacho_amb" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="reg_temp_despacho_pul" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_inicio_amb" name="reg_temp_inicio_amb" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_inicio_pul" name="reg_temp_inicio_pul" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_termino_amb" name="reg_temp_termino_amb" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_termino_pul" name="reg_temp_termino_pul" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_llegada_amb" name="reg_temp_llegada_amb" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_llegada_pul" name="reg_temp_llegada_pul" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_despacho_amb" name="reg_temp_despacho_amb" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_despacho_pul" name="reg_temp_despacho_pul" placeholder="0.0" step="0.1"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-temperaturas" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -389,10 +395,10 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_humedad">0</span></td>
-                            <td><input type="number" id="reg_humedad_inicio" placeholder="0%" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_humedad_termino" placeholder="0%" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_humedad_llegada" placeholder="0%" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_humedad_despacho" placeholder="0%" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_humedad_inicio" name="reg_humedad_inicio" placeholder="0%" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_humedad_termino" name="reg_humedad_termino" placeholder="0%" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_humedad_llegada" name="reg_humedad_llegada" placeholder="0%" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_humedad_despacho" name="reg_humedad_despacho" placeholder="0%" step="0.1" inputmode="decimal"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-humedad" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -434,10 +440,10 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_temp_amb">0</span></td>
-                            <td><input type="number" id="reg_temp_amb_inicio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_temp_amb_termino" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_temp_amb_llegada" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_temp_amb_despacho" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_temp_amb_inicio" name="reg_temp_amb_inicio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_temp_amb_termino" name="reg_temp_amb_termino" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_temp_amb_llegada" name="reg_temp_amb_llegada" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_temp_amb_despacho" name="reg_temp_amb_despacho" placeholder="0.0" step="0.1" inputmode="decimal"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-temp-amb" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -479,10 +485,10 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_presion">0</span></td>
-                            <td><input type="number" id="reg_presion_amb_inicio" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_presion_amb_termino" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_presion_amb_llegada" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_presion_amb_despacho" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_amb_inicio" name="reg_presion_amb_inicio" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_amb_termino" name="reg_presion_amb_termino" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_amb_llegada" name="reg_presion_amb_llegada" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_amb_despacho" name="reg_presion_amb_despacho" placeholder="0.000" step="0.001" inputmode="decimal"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-presion" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -518,16 +524,16 @@
                             <th title="Término Cosecha"><i data-lucide="check-circle"></i><br>TÉRMINO</th>
                             <th title="Llegada Acopio"><i data-lucide="warehouse"></i><br>LLEGADA</th>
                             <th title="Despacho Acopio"><i data-lucide="truck"></i><br>DESPACHO</th>
-                            <th class="b-right">ACCION</th>
+                            <th rowspan="2" class="b-right">ACCION</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_presion_fruta">0</span></td>
-                            <td><input type="number" id="reg_presion_fruta_inicio" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_presion_fruta_termino" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_presion_fruta_llegada" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_presion_fruta_despacho" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_fruta_inicio" name="reg_presion_fruta_inicio" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_fruta_termino" name="reg_presion_fruta_termino" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_fruta_llegada" name="reg_presion_fruta_llegada" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_fruta_despacho" name="reg_presion_fruta_despacho" placeholder="0.000" step="0.001" inputmode="decimal"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-presion-fruta" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -569,7 +575,7 @@
                                 <span id="next_clam_obs">0</span>
                             </td>
                             <td>
-                                <input type="text" id="reg_observacion_texto" placeholder="Escriba aquí la nota de la muestra...">
+                                <input type="text" id="reg_observacion_texto" name="reg_observacion_texto" placeholder="Escriba aquí la nota de la muestra...">
                             </td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-obs" class="btn-mini-add">
@@ -595,7 +601,7 @@
                 </div>
             </div>
 
-        <button type="submit" id="btn-guardar-registro" class="btn-primary-blue">
+        <button type="button" id="btn-guardar-registro" class="btn-primary-blue">
             GUARDAR REGISTRO
         </button>
 
@@ -604,6 +610,31 @@
 
     <script src="librerias/sweetalert2.all.min.js"></script>
     <script src="librerias/lucide.min.js"></script>
-    <script src="script.js"></script>
+
+    <script type="module">
+        import { updateUI } from './network.js';
+
+        // Estado de conexión y pendientes al cargar
+        updateUI();
+
+        // Eventos online/offline para actualizar estado en tiempo real
+        window.addEventListener('online', () => updateUI());
+        window.addEventListener('offline', () => updateUI());
+
+        // SweetAlert / aviso antes de cerrar o refrescar si hay datos sin guardar
+        window.addEventListener('beforeunload', (e) => {
+            if (window.formHasChanges) {
+                e.preventDefault();
+                e.returnValue = 'Tienes datos sin guardar. ¿Seguro que quieres salir?';
+            }
+        });
+
+        // Service Worker solo en producción (evita errores con Live Server)
+        if ('serviceWorker' in navigator && !window.location.hostname.match(/127\.0\.0\.1|localhost/)) {
+            navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+        }
+    </script>
+
+    <script type="module" src="script.js"></script>
 </body>
 </html>
