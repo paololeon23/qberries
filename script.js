@@ -437,25 +437,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function cargarFechasPacking() {
-        const selFecha = document.getElementById('view_fecha');
+        const inputFecha = document.getElementById('view_fecha');
+        const txtFechasConDatos = document.getElementById('view_fechas_con_datos');
         const selEnsayo = document.getElementById('view_ensayo_nombre');
-        if (!selFecha || !selEnsayo) return;
-        selFecha.innerHTML = '<option value="" disabled selected>Seleccione fecha...</option>';
+        if (!inputFecha || !selEnsayo) return;
+        if (inputFecha.value) inputFecha.value = '';
         selEnsayo.innerHTML = '<option value="" disabled selected>Seleccione ensayo...</option>';
+        if (txtFechasConDatos) txtFechasConDatos.textContent = '';
         try {
             const res = await getFechasConDatos();
             if (res.ok && res.fechas && res.fechas.length > 0) {
-                res.fechas.forEach(function (f) {
-                    const opt = document.createElement('option');
-                    opt.value = f;
-                    opt.textContent = formatearFechaParaVer(f);
-                    selFecha.appendChild(opt);
-                });
+                var list = res.fechas.map(formatearFechaParaVer).join(', ');
+                if (txtFechasConDatos) txtFechasConDatos.textContent = 'Fechas con datos: ' + list;
                 if (res.fromCache) Swal.fire({ title: 'Datos guardados', text: 'Usando última data (sin conexión).', icon: 'info', timer: 2000, showConfirmButton: false });
-            } else if (!res.ok && res.error) {
-                Swal.fire({ title: 'Aviso', text: res.error, icon: 'info' });
+            } else {
+                if (txtFechasConDatos) txtFechasConDatos.textContent = res.error ? res.error : 'Sin fechas con datos.';
+                if (!res.ok && res.error) Swal.fire({ title: 'Aviso', text: res.error, icon: 'info' });
             }
         } catch (err) {
+            if (txtFechasConDatos) txtFechasConDatos.textContent = '';
             Swal.fire({ title: 'Error', text: err.message || 'No se pudieron cargar las fechas.', icon: 'error' });
         }
     }

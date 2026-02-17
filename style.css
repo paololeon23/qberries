@@ -249,6 +249,13 @@ input:focus, select:focus {
     box-shadow: 0 0 5px rgba(47, 124, 192, 0.3);
 }
 
+.fechas-con-datos {
+    margin: 6px 0 0;
+    font-size: 0.85rem;
+    color: var(--text-muted, #555);
+    line-height: 1.3;
+}
+
 /* ========== BOTONES ========== */
 .btn-primary-blue {
     width: 100%;
