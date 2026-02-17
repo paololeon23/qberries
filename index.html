@@ -52,11 +52,11 @@
                 <select id="tipo_medicion" name="tipo_medicion" class="select-modern" required>
                     <option value="" disabled selected>Seleccione para comenzar...</option>
                     <option value="visual">Calibrado Visual</option>
-                    <option value="acopio">Calibrado Acopio</option>
+                    <option value="packing">Calibrado Packing</option>
                 </select>
             </div>
 
-
+            <div id="view_visual_container">
             <section class="form-group">
                 <div class="row">
                     <div class="col">
@@ -182,7 +182,7 @@
                                 <span id="next_row_jarras">1</span> 
                             </td>
                             <td>
-                                <input type="number" id="reg_jarras_n_jarra" name="reg_jarras_n_jarra" placeholder="ID Jarra" inputmode="numeric">
+                                <input type="number" id="reg_jarras_n_jarra" name="reg_jarras_n_jarra" placeholder="ID Jarra" inputmode="numeric" min="1" step="1">
                             </td>
                             <td>
                                 <select id="reg_jarras_tipo" name="reg_jarras_tipo" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
@@ -245,11 +245,11 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_visual">0</span></td>
-                            <td><input type="number" id="reg_visual_n_jarra" name="reg_visual_n_jarra" placeholder="0" inputmode="numeric"></td>
-                            <td><input type="number" id="reg_visual_peso_1" name="reg_visual_peso_1" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_visual_peso_2" name="reg_visual_peso_2" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_visual_llegada_acopio" name="reg_visual_llegada_acopio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_visual_despacho_acopio" name="reg_visual_despacho_acopio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_visual_n_jarra" name="reg_visual_n_jarra" placeholder="0" inputmode="numeric" min="1" step="1"></td>
+                            <td><input type="number" id="reg_visual_peso_1" name="reg_visual_peso_1" placeholder="0.0" step="0.1" inputmode="decimal" min="0"></td>
+                            <td><input type="number" id="reg_visual_peso_2" name="reg_visual_peso_2" placeholder="0.0" step="0.1" inputmode="decimal" min="0"></td>
+                            <td><input type="number" id="reg_visual_llegada_acopio" name="reg_visual_llegada_acopio" placeholder="0.0" step="0.1" inputmode="decimal" min="0"></td>
+                            <td><input type="number" id="reg_visual_despacho_acopio" name="reg_visual_despacho_acopio" placeholder="0.0" step="0.1" inputmode="decimal" min="0"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-visual" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -348,14 +348,14 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_temp">0</span></td>
-                            <td><input type="number" id="reg_temp_inicio_amb" name="reg_temp_inicio_amb" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="reg_temp_inicio_pul" name="reg_temp_inicio_pul" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="reg_temp_termino_amb" name="reg_temp_termino_amb" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="reg_temp_termino_pul" name="reg_temp_termino_pul" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="reg_temp_llegada_amb" name="reg_temp_llegada_amb" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="reg_temp_llegada_pul" name="reg_temp_llegada_pul" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="reg_temp_despacho_amb" name="reg_temp_despacho_amb" placeholder="0.0" step="0.1"></td>
-                            <td><input type="number" id="reg_temp_despacho_pul" name="reg_temp_despacho_pul" placeholder="0.0" step="0.1"></td>
+                            <td><input type="number" id="reg_temp_inicio_amb" name="reg_temp_inicio_amb" placeholder="0.0" step="0.1" min="0"></td>
+                            <td><input type="number" id="reg_temp_inicio_pul" name="reg_temp_inicio_pul" placeholder="0.0" step="0.1" min="0"></td>
+                            <td><input type="number" id="reg_temp_termino_amb" name="reg_temp_termino_amb" placeholder="0.0" step="0.1" min="0"></td>
+                            <td><input type="number" id="reg_temp_termino_pul" name="reg_temp_termino_pul" placeholder="0.0" step="0.1" min="0"></td>
+                            <td><input type="number" id="reg_temp_llegada_amb" name="reg_temp_llegada_amb" placeholder="0.0" step="0.1" min="0"></td>
+                            <td><input type="number" id="reg_temp_llegada_pul" name="reg_temp_llegada_pul" placeholder="0.0" step="0.1" min="0"></td>
+                            <td><input type="number" id="reg_temp_despacho_amb" name="reg_temp_despacho_amb" placeholder="0.0" step="0.1" min="0"></td>
+                            <td><input type="number" id="reg_temp_despacho_pul" name="reg_temp_despacho_pul" placeholder="0.0" step="0.1" min="0"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-temperaturas" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -396,10 +396,10 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_humedad">0</span></td>
-                            <td><input type="number" id="reg_humedad_inicio" name="reg_humedad_inicio" placeholder="0%" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_humedad_termino" name="reg_humedad_termino" placeholder="0%" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_humedad_llegada" name="reg_humedad_llegada" placeholder="0%" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_humedad_despacho" name="reg_humedad_despacho" placeholder="0%" step="0.1" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_humedad_inicio" name="reg_humedad_inicio" placeholder="0%" step="0.1" inputmode="decimal" min="0"></td>
+                            <td><input type="number" id="reg_humedad_termino" name="reg_humedad_termino" placeholder="0%" step="0.1" inputmode="decimal" min="0"></td>
+                            <td><input type="number" id="reg_humedad_llegada" name="reg_humedad_llegada" placeholder="0%" step="0.1" inputmode="decimal" min="0"></td>
+                            <td><input type="number" id="reg_humedad_despacho" name="reg_humedad_despacho" placeholder="0%" step="0.1" inputmode="decimal" min="0"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-humedad" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -408,51 +408,6 @@
                         </tr>
                     </tbody>
                     <tbody id="tbody-humedad">
-                        </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div id="wrapper_tempambiente" class="collapsible-wrapper" style="display: none;">
-    <div class="collapsible-card">
-        <div class="card-header collapsible-toggle" data-target="body-temp-ambiente">
-            <div class="header-info">
-                <i data-lucide="sun"></i>
-                <span>TEMPERATURA AMBIENTE (°C)</span>
-            </div>
-            <i data-lucide="chevron-down" class="chevron"></i>
-        </div>
-
-        <div class="card-body" id="body-temp-ambiente">
-            <div class="table-scroll">
-                <table class="table-field-style">
-                    <thead>
-                        <tr>
-                            <th class="b-left">N° CLAM</th>
-                            <th title="Inicio Cosecha"><i data-lucide="thermometer"></i><br>INICIO</th>
-                            <th title="Término Cosecha"><i data-lucide="thermometer-sun"></i><br>TÉRMINO</th>
-                            <th title="Llegada Acopio"><i data-lucide="warehouse"></i><br>LLEGADA</th>
-                            <th title="Despacho Acopio"><i data-lucide="truck"></i><br>DESPACHO</th>
-                            <th class="b-right">ACCION</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="input-table-row">
-                            <td class="b-left"><span id="next_clam_temp_amb">0</span></td>
-                            <td><input type="number" id="reg_temp_amb_inicio" name="reg_temp_amb_inicio" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_temp_amb_termino" name="reg_temp_amb_termino" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_temp_amb_llegada" name="reg_temp_amb_llegada" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_temp_amb_despacho" name="reg_temp_amb_despacho" placeholder="0.0" step="0.1" inputmode="decimal"></td>
-                            <td class="b-right">
-                                <button type="button" id="btn-add-temp-amb" class="btn-mini-add">
-                                    <i data-lucide="plus"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                    <tbody id="tbody-temp-ambiente">
                         </tbody>
                 </table>
             </div>
@@ -486,10 +441,10 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_presion">0</span></td>
-                            <td><input type="number" id="reg_presion_amb_inicio" name="reg_presion_amb_inicio" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_presion_amb_termino" name="reg_presion_amb_termino" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_presion_amb_llegada" name="reg_presion_amb_llegada" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_presion_amb_despacho" name="reg_presion_amb_despacho" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_amb_inicio" name="reg_presion_amb_inicio" placeholder="0.000" step="0.001" inputmode="decimal" min="0"></td>
+                            <td><input type="number" id="reg_presion_amb_termino" name="reg_presion_amb_termino" placeholder="0.000" step="0.001" inputmode="decimal" min="0"></td>
+                            <td><input type="number" id="reg_presion_amb_llegada" name="reg_presion_amb_llegada" placeholder="0.000" step="0.001" inputmode="decimal" min="0"></td>
+                            <td><input type="number" id="reg_presion_amb_despacho" name="reg_presion_amb_despacho" placeholder="0.000" step="0.001" inputmode="decimal" min="0"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-presion" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -531,10 +486,10 @@
                     <tbody>
                         <tr class="input-table-row">
                             <td class="b-left"><span id="next_clam_presion_fruta">0</span></td>
-                            <td><input type="number" id="reg_presion_fruta_inicio" name="reg_presion_fruta_inicio" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_presion_fruta_termino" name="reg_presion_fruta_termino" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_presion_fruta_llegada" name="reg_presion_fruta_llegada" placeholder="0.000" step="0.001" inputmode="decimal"></td>
-                            <td><input type="number" id="reg_presion_fruta_despacho" name="reg_presion_fruta_despacho" placeholder="0.000" step="0.001" inputmode="decimal"></td>
+                            <td><input type="number" id="reg_presion_fruta_inicio" name="reg_presion_fruta_inicio" placeholder="0.000" step="0.001" inputmode="decimal" min="0"></td>
+                            <td><input type="number" id="reg_presion_fruta_termino" name="reg_presion_fruta_termino" placeholder="0.000" step="0.001" inputmode="decimal" min="0"></td>
+                            <td><input type="number" id="reg_presion_fruta_llegada" name="reg_presion_fruta_llegada" placeholder="0.000" step="0.001" inputmode="decimal" min="0"></td>
+                            <td><input type="number" id="reg_presion_fruta_despacho" name="reg_presion_fruta_despacho" placeholder="0.000" step="0.001" inputmode="decimal" min="0"></td>
                             <td class="b-right">
                                 <button type="button" id="btn-add-presion-fruta" class="btn-mini-add">
                                     <i data-lucide="plus"></i>
@@ -592,13 +547,152 @@
         </div>
     </div>
 </div>
+            </div>
 
+            <div id="view_packing_container" class="form-group" style="display: none;">
+                <div class="main-card" style="margin-bottom: 1rem;">
+                    <div class="row">
+                        <div class="col">
+                            <label><i data-lucide="calendar"></i> Fecha</label>
+                            <select id="view_fecha" name="view_fecha" class="select-modern">
+                                <option value="" disabled selected>Seleccione fecha...</option>
+                            </select>
+                        </div>
+                        <div class="col">
+                            <label><i data-lucide="layers"></i> Ensayo</label>
+                            <select id="view_ensayo_nombre" name="view_ensayo_nombre" class="select-modern">
+                                <option value="" disabled selected>Seleccione ensayo...</option>
+                            </select>
+                        </div>
+                        <div class="col" style="display: flex; align-items: flex-end;">
+                            <button type="button" id="btn_cargar_datos" class="btn-primary-blue" style="padding: 8px 16px;">Cargar datos</button>
+                        </div>
+                    </div>
+                </div>
 
+                <section class="form-group main-card">
+                    <div class="row">
+                        <div class="col">
+                            <label><i data-lucide="clock"></i> Hora Inicio Recepción</label>
+                            <input type="time" id="view_hora_recepcion" name="view_hora_recepcion">
+                        </div>
+                        <div class="col">
+                            <label><i data-lucide="tag"></i> Rótulo Muestra</label>
+                            <input type="text" id="view_rotulo" name="view_rotulo" placeholder="E01" style="text-transform: uppercase;">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <label><i data-lucide="map-pin"></i> Ubicación (Etapa / Campo / Turno)</label>
+                            <div class="input-group-triple">
+                                <select id="view_etapa" name="view_etapa">
+                                    <option value="" disabled selected>Etapa</option>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                </select>
+                                <select id="view_campo" name="view_campo">
+                                    <option value="" disabled selected>Campo</option>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                </select>
+                                <input type="text" id="view_turno" name="view_turno" placeholder="Turno" maxlength="2">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <label><i data-lucide="leaf"></i> Variedad</label>
+                            <input type="text" id="view_variedad" name="view_variedad" placeholder="VENTURA" style="text-transform: uppercase;">
+                        </div>
+                        <div class="col">
+                            <label><i data-lucide="truck"></i> N° Placa Camioneta</label>
+                            <input type="text" id="view_placa" name="view_placa" placeholder="M81-787" style="text-transform: uppercase;">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <label><i data-lucide="file-text"></i> N° Guía Despacho</label>
+                            <input type="text" id="view_guia_despacho" name="view_guia_despacho" placeholder="---" inputmode="numeric">
+                        </div>
+                        <div class="col">
+                            <label><i data-lucide="navigation"></i> N° Viaje</label>
+                            <input type="number" id="view_n_viaje" name="view_n_viaje" placeholder="35">
+                        </div>
+                    </div>
+                </section>
 
-            <div id="wrapper_acopio" class="collapsible-wrapper" style="display: none;">
-                <div class="empty-state">
-                    <i data-lucide="construction"></i>
-                    <p>Calibrado de Acopio: Módulo en espera.</p>
+                <div id="wrapper_packing_1" class="collapsible-wrapper">
+                    <div class="collapsible-card">
+                        <div class="card-header collapsible-toggle" data-target="body-packing-1">
+                            <div class="header-info"><i data-lucide="package"></i><span>Packing 1</span></div>
+                            <i data-lucide="chevron-down" class="chevron"></i>
+                        </div>
+                        <div class="card-body" id="body-packing-1"><p class="empty-state">Contenido pendiente.</p></div>
+                    </div>
+                </div>
+                <div id="wrapper_packing_2" class="collapsible-wrapper">
+                    <div class="collapsible-card">
+                        <div class="card-header collapsible-toggle" data-target="body-packing-2">
+                            <div class="header-info"><i data-lucide="package"></i><span>Packing 2</span></div>
+                            <i data-lucide="chevron-down" class="chevron"></i>
+                        </div>
+                        <div class="card-body" id="body-packing-2"><p class="empty-state">Contenido pendiente.</p></div>
+                    </div>
+                </div>
+                <div id="wrapper_packing_3" class="collapsible-wrapper">
+                    <div class="collapsible-card">
+                        <div class="card-header collapsible-toggle" data-target="body-packing-3">
+                            <div class="header-info"><i data-lucide="package"></i><span>Packing 3</span></div>
+                            <i data-lucide="chevron-down" class="chevron"></i>
+                        </div>
+                        <div class="card-body" id="body-packing-3"><p class="empty-state">Contenido pendiente.</p></div>
+                    </div>
+                </div>
+                <div id="wrapper_packing_4" class="collapsible-wrapper">
+                    <div class="collapsible-card">
+                        <div class="card-header collapsible-toggle" data-target="body-packing-4">
+                            <div class="header-info"><i data-lucide="package"></i><span>Packing 4</span></div>
+                            <i data-lucide="chevron-down" class="chevron"></i>
+                        </div>
+                        <div class="card-body" id="body-packing-4"><p class="empty-state">Contenido pendiente.</p></div>
+                    </div>
+                </div>
+                <div id="wrapper_packing_5" class="collapsible-wrapper">
+                    <div class="collapsible-card">
+                        <div class="card-header collapsible-toggle" data-target="body-packing-5">
+                            <div class="header-info"><i data-lucide="package"></i><span>Packing 5</span></div>
+                            <i data-lucide="chevron-down" class="chevron"></i>
+                        </div>
+                        <div class="card-body" id="body-packing-5"><p class="empty-state">Contenido pendiente.</p></div>
+                    </div>
+                </div>
+                <div id="wrapper_packing_6" class="collapsible-wrapper">
+                    <div class="collapsible-card">
+                        <div class="card-header collapsible-toggle" data-target="body-packing-6">
+                            <div class="header-info"><i data-lucide="package"></i><span>Packing 6</span></div>
+                            <i data-lucide="chevron-down" class="chevron"></i>
+                        </div>
+                        <div class="card-body" id="body-packing-6"><p class="empty-state">Contenido pendiente.</p></div>
+                    </div>
+                </div>
+                <div id="wrapper_packing_7" class="collapsible-wrapper">
+                    <div class="collapsible-card">
+                        <div class="card-header collapsible-toggle" data-target="body-packing-7">
+                            <div class="header-info"><i data-lucide="package"></i><span>Packing 7</span></div>
+                            <i data-lucide="chevron-down" class="chevron"></i>
+                        </div>
+                        <div class="card-body" id="body-packing-7"><p class="empty-state">Contenido pendiente.</p></div>
+                    </div>
+                </div>
+                <div id="wrapper_packing_8" class="collapsible-wrapper">
+                    <div class="collapsible-card">
+                        <div class="card-header collapsible-toggle" data-target="body-packing-8">
+                            <div class="header-info"><i data-lucide="package"></i><span>Packing 8</span></div>
+                            <i data-lucide="chevron-down" class="chevron"></i>
+                        </div>
+                        <div class="card-body" id="body-packing-8"><p class="empty-state">Contenido pendiente.</p></div>
+                    </div>
                 </div>
             </div>
 

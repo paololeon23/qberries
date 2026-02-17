@@ -1,4 +1,4 @@
-import { saveLocal, updateUI } from './network.js';
+import { saveLocal, updateUI, getDatosPacking, getFechasConDatos, getEnsayosPorFecha } from './network.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -180,80 +180,81 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Agrupar por fecha (FECHA viene en col 0 de cada fila)
         const gruposPorFecha = {};
         items.forEach(item => {
             const rows = item.rows || [];
             if (!rows.length) return;
             const fecha = rows[0][0] || (item.timestamp || '').split(' ')[0];
-
             if (!gruposPorFecha[fecha]) gruposPorFecha[fecha] = [];
             gruposPorFecha[fecha].push(item);
         });
 
-        Object.entries(gruposPorFecha).forEach(([fecha, itemsDeDia]) => {
-            // Por día, agrupar por ensayo
-            const ensayosMap = {};
+        const fechasOrdenadas = Object.keys(gruposPorFecha).sort((a, b) => b.localeCompare(a));
+        const filasTabla = [];
 
+        fechasOrdenadas.forEach(fecha => {
+            const itemsDeDia = gruposPorFecha[fecha];
+            const ensayosMap = {};
             itemsDeDia.forEach(item => {
                 const estado = item.status === 'subido' ? 'subido' : 'pendiente';
                 (item.rows || []).forEach(row => {
-                    const ensayoNum = row[10];  // ENSAYO_NUMERO
-                    const ensayoNom = row[11];  // ENSAYO_NOMBRE
+                    const ensayoNum = row[10];
+                    const ensayoNom = row[11] || ('Ensayo ' + ensayoNum);
                     const clave = `${ensayoNum}|${ensayoNom}`;
-
                     if (!ensayosMap[clave]) {
-                        ensayosMap[clave] = {
-                            ensayoNum,
-                            ensayoNom,
-                            totalClamshells: 0,
-                            estados: new Set()
-                        };
+                        ensayosMap[clave] = { ensayoNum, ensayoNom, totalClamshells: 0, estados: new Set() };
                     }
                     ensayosMap[clave].totalClamshells += 1;
                     ensayosMap[clave].estados.add(estado);
                 });
             });
 
-            const bloque = document.createElement('div');
-            bloque.className = 'hist-date-group';
-
-            const cabecera = document.createElement('div');
-            cabecera.className = 'hist-date-header';
-            cabecera.innerHTML = `
-                <div class="hist-date-badge">
-                    <span>${fecha}</span>
-                </div>
-                <span>Ensayos: ${Object.keys(ensayosMap).length}</span>
-            `;
-            bloque.appendChild(cabecera);
-
-            const contEnsayos = document.createElement('div');
-            contEnsayos.className = 'hist-ensayos';
-
             Object.values(ensayosMap).forEach(info => {
-                const card = document.createElement('div');
-                card.className = 'hist-ensayo-card';
-
                 const estadoFinal = info.estados.has('pendiente') ? 'pendiente' : 'subido';
                 const claseEstado = estadoFinal === 'pendiente' ? 'hist-status-pendiente' : 'hist-status-subido';
-                const textoEstado = estadoFinal === 'pendiente' ? 'Pendiente' : 'Subida';
-
-                card.innerHTML = `
-                    <div class="hist-ensayo-title">${info.ensayoNom || ('Ensayo ' + info.ensayoNum)}</div>
-                    <div class="hist-ensayo-meta">
-                        <span>Clamshells: ${info.totalClamshells}</span>
-                        <span class="hist-status-badge ${claseEstado}">${textoEstado}</span>
-                    </div>
-                `;
-
-                contEnsayos.appendChild(card);
+                const textoEstado = estadoFinal === 'pendiente' ? 'Pendiente' : 'Subido';
+                filasTabla.push({
+                    fecha,
+                    ensayo: info.ensayoNom || ('Ensayo ' + info.ensayoNum),
+                    clamshells: info.totalClamshells,
+                    estado: textoEstado,
+                    claseEstado
+                });
             });
-
-            bloque.appendChild(contEnsayos);
-            contenedor.appendChild(bloque);
         });
+
+        const thead = `
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Ensayo</th>
+                    <th>Clamshells</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>`;
+        const tbody = '<tbody>' + filasTabla.map(f => `
+            <tr>
+                <td>${f.fecha}</td>
+                <td>${f.ensayo}</td>
+                <td>${f.clamshells}</td>
+                <td><span class="hist-status-badge ${f.claseEstado}">${f.estado}</span></td>
+            </tr>
+        `).join('') + '</tbody>';
+
+        const table = document.createElement('div');
+        table.className = 'historial-table-wrapper';
+        table.innerHTML = `
+            <table class="historial-table">
+                ${thead}
+                ${tbody}
+            </table>`;
+        contenedor.appendChild(table);
     }
+
+    window.addEventListener('tiemposStorageUpdated', () => {
+        const v = document.getElementById('view-historial');
+        if (v && v.style.display !== 'none') renderHistorial();
+    });
 
     // ========================================
     // 8. SISTEMA DE MEDICIÓN - CONFIGURACIÓN
@@ -268,26 +269,27 @@ document.addEventListener('DOMContentLoaded', () => {
         temperaturas: document.getElementById('wrapper_temperaturas'),
         tiempos: document.getElementById('wrapper_tiempos'),
         humedad: document.getElementById('wrapper_humedad'),
-        tempambiente: document.getElementById('wrapper_tempambiente'),
         presionambiente: document.getElementById('wrapper_presionambiente'),
         presionfruta: document.getElementById('wrapper_presionfruta'),
-        observacion: document.getElementById('wrapper_observacion'),
-        acopio: document.getElementById('wrapper_acopio')
+        observacion: document.getElementById('wrapper_observacion')
     };
+    const viewVisualContainer = document.getElementById('view_visual_container');
+    const viewPackingContainer = document.getElementById('view_packing_container');
+    const btnGuardarRegistro = document.getElementById('btn-guardar-registro');
 
     // Almacenamiento de datos por ensayo y tipo
     const datosEnsayos = {
         visual: {
-            1: { visual: [], jarras: [], temperaturas: [], tiempos: [], humedad: [], tempambiente: [], presionambiente: [], presionfruta: [], observacion: [] },
-            2: { visual: [], jarras: [], temperaturas: [], tiempos: [], humedad: [], tempambiente: [], presionambiente: [], presionfruta: [], observacion: [] },
-            3: { visual: [], jarras: [], temperaturas: [], tiempos: [], humedad: [], tempambiente: [], presionambiente: [], presionfruta: [], observacion: [] },
-            4: { visual: [], jarras: [], temperaturas: [], tiempos: [], humedad: [], tempambiente: [], presionambiente: [], presionfruta: [], observacion: [] }
+            1: { visual: [], jarras: [], temperaturas: [], tiempos: [], humedad: [], presionambiente: [], presionfruta: [], observacion: [] },
+            2: { visual: [], jarras: [], temperaturas: [], tiempos: [], humedad: [], presionambiente: [], presionfruta: [], observacion: [] },
+            3: { visual: [], jarras: [], temperaturas: [], tiempos: [], humedad: [], presionambiente: [], presionfruta: [], observacion: [] },
+            4: { visual: [], jarras: [], temperaturas: [], tiempos: [], humedad: [], presionambiente: [], presionfruta: [], observacion: [] }
         },
-        acopio: {
-            1: { acopio: [] },
-            2: { acopio: [] },
-            3: { acopio: [] },
-            4: { acopio: [] }
+        packing: {
+            1: { packing: [] },
+            2: { packing: [] },
+            3: { packing: [] },
+            4: { packing: [] }
         }
     };
 
@@ -295,35 +297,97 @@ document.addEventListener('DOMContentLoaded', () => {
     let ensayoActual = '';
 
     // ========================================
+    // HELPERS DE VALIDACIÓN
+    // ========================================
+    function esNumeroPositivoEntero(val) {
+        if (val === '' || val == null) return false;
+        const n = Number(val);
+        return Number.isInteger(n) && n > 0;
+    }
+    function esNumeroNoNegativo(val) {
+        if (val === '' || val == null) return false;
+        const n = Number(val);
+        return !Number.isNaN(n) && n >= 0 && /^\d*\.?\d*$/.test(String(val).trim());
+    }
+    function tiempoEnMinutos(t) {
+        if (!t || typeof t !== 'string') return -1;
+        const [h, m] = t.trim().split(':').map(Number);
+        if (Number.isNaN(h) || Number.isNaN(m)) return -1;
+        return h * 60 + m;
+    }
+    function tiempoMenorOIgual(t1, t2) {
+        return tiempoEnMinutos(t1) <= tiempoEnMinutos(t2);
+    }
+    function tieneDatosSinGuardar() {
+        const ids = {
+            visual: ['reg_visual_n_jarra', 'reg_visual_peso_1', 'reg_visual_peso_2', 'reg_visual_llegada_acopio', 'reg_visual_despacho_acopio'],
+            jarras: ['reg_jarras_n_jarra', 'reg_jarras_inicio', 'reg_jarras_termino'],
+            tiempos: ['reg_tiempos_inicio_c', 'reg_tiempos_perdida_peso', 'reg_tiempos_termino_c', 'reg_tiempos_llegada_acopio', 'reg_tiempos_despacho_acopio'],
+            temperaturas: ['reg_temp_inicio_amb', 'reg_temp_inicio_pul', 'reg_temp_termino_amb', 'reg_temp_termino_pul', 'reg_temp_llegada_amb', 'reg_temp_llegada_pul', 'reg_temp_despacho_amb', 'reg_temp_despacho_pul'],
+            humedad: ['reg_humedad_inicio', 'reg_humedad_termino', 'reg_humedad_llegada', 'reg_humedad_despacho'],
+            presionambiente: ['reg_presion_amb_inicio', 'reg_presion_amb_termino', 'reg_presion_amb_llegada', 'reg_presion_amb_despacho'],
+            presionfruta: ['reg_presion_fruta_inicio', 'reg_presion_fruta_termino', 'reg_presion_fruta_llegada', 'reg_presion_fruta_despacho'],
+            observacion: ['reg_observacion_texto']
+        };
+        for (const [seccion, arr] of Object.entries(ids)) {
+            const algunoLleno = arr.some(id => {
+                const el = document.getElementById(id);
+                return el && String(el.value || '').trim() !== '';
+            });
+            if (algunoLleno) return true;
+        }
+        return false;
+    }
+
+    // ========================================
     // CAMBIO DE TIPO DE MEDICIÓN
     // ========================================
     if (selectMedicion) {
-        selectMedicion.addEventListener('change', function() {
-            tipoActual = this.value;
+        selectMedicion.addEventListener('change', async function() {
+            const newTipo = this.value;
+            if (tieneDatosSinGuardar()) {
+                const result = await Swal.fire({
+                    title: '¿Descartar datos?',
+                    text: 'Tienes datos en la fila actual sin haber pulsado "Añadir". ¿Seguro que no quieres guardar esta fila?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, descartar',
+                    cancelButtonText: 'No, quedarme',
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6'
+                });
+                if (!result.isConfirmed) {
+                    this.value = tipoActual;
+                    return;
+                }
+            }
+            tipoActual = newTipo;
             
             if (this.value === 'visual') {
+                if (viewVisualContainer) viewVisualContainer.style.display = 'block';
+                if (viewPackingContainer) viewPackingContainer.style.display = 'none';
+                if (btnGuardarRegistro) btnGuardarRegistro.style.display = 'block';
                 wrappers.visual.style.display = 'block';
                 wrappers.jarras.style.display = 'block';
                 wrappers.temperaturas.style.display = 'block';
                 wrappers.tiempos.style.display = 'block';
                 wrappers.humedad.style.display = 'block';
-                wrappers.tempambiente.style.display = 'block';
                 wrappers.presionambiente.style.display = 'block';
                 wrappers.presionfruta.style.display = 'block';
                 wrappers.observacion.style.display = 'block';
-                wrappers.acopio.style.display = 'none';
-                
-            } else if (this.value === 'acopio') {
+            } else if (this.value === 'packing') {
+                if (viewVisualContainer) viewVisualContainer.style.display = 'none';
+                if (viewPackingContainer) viewPackingContainer.style.display = 'block';
+                if (btnGuardarRegistro) btnGuardarRegistro.style.display = 'none';
                 wrappers.visual.style.display = 'none';
                 wrappers.jarras.style.display = 'none';
                 wrappers.temperaturas.style.display = 'none';
                 wrappers.tiempos.style.display = 'none';
                 wrappers.humedad.style.display = 'none';
-                wrappers.tempambiente.style.display = 'none';
                 wrappers.presionambiente.style.display = 'none';
                 wrappers.presionfruta.style.display = 'none';
                 wrappers.observacion.style.display = 'none';
-                wrappers.acopio.style.display = 'block';
+                cargarFechasPacking();
             }
             
             if (ensayoActual) {
@@ -336,14 +400,138 @@ document.addEventListener('DOMContentLoaded', () => {
     // CAMBIO DE ENSAYO
     // ========================================
     if (selectRotulo) {
-        selectRotulo.addEventListener('change', function() {
-            ensayoActual = this.value;
+        selectRotulo.addEventListener('change', async function() {
+            const newEnsayo = this.value;
+            if (tieneDatosSinGuardar()) {
+                const result = await Swal.fire({
+                    title: '¿Descartar datos?',
+                    text: 'Tienes datos en la fila actual sin haber pulsado "Añadir". ¿Seguro que no quieres guardar esta fila?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, descartar',
+                    cancelButtonText: 'No, quedarme',
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6'
+                });
+                if (!result.isConfirmed) {
+                    this.value = ensayoActual;
+                    return;
+                }
+            }
+            ensayoActual = newEnsayo;
             
             if (tipoActual) {
                 restaurarDatosEnsayo(tipoActual, ensayoActual);
             }
         });
     }
+
+    // ========================================
+    // PACKING: fechas y ensayos con datos (solo opciones que tienen data)
+    // ========================================
+    function formatearFechaParaVer(yyyyMmDd) {
+        if (!yyyyMmDd || typeof yyyyMmDd !== 'string') return yyyyMmDd || '';
+        var parts = yyyyMmDd.trim().split('-');
+        if (parts.length !== 3) return yyyyMmDd;
+        return parts[2] + '/' + parts[1] + '/' + parts[0];
+    }
+
+    async function cargarFechasPacking() {
+        const selFecha = document.getElementById('view_fecha');
+        const selEnsayo = document.getElementById('view_ensayo_nombre');
+        if (!selFecha || !selEnsayo) return;
+        selFecha.innerHTML = '<option value="" disabled selected>Seleccione fecha...</option>';
+        selEnsayo.innerHTML = '<option value="" disabled selected>Seleccione ensayo...</option>';
+        try {
+            const res = await getFechasConDatos();
+            if (res.ok && res.fechas && res.fechas.length > 0) {
+                res.fechas.forEach(function (f) {
+                    const opt = document.createElement('option');
+                    opt.value = f;
+                    opt.textContent = formatearFechaParaVer(f);
+                    selFecha.appendChild(opt);
+                });
+                if (res.fromCache) Swal.fire({ title: 'Datos guardados', text: 'Usando última data (sin conexión).', icon: 'info', timer: 2000, showConfirmButton: false });
+            } else if (!res.ok && res.error) {
+                Swal.fire({ title: 'Aviso', text: res.error, icon: 'info' });
+            }
+        } catch (err) {
+            Swal.fire({ title: 'Error', text: err.message || 'No se pudieron cargar las fechas.', icon: 'error' });
+        }
+    }
+
+    const viewFechaEl = document.getElementById('view_fecha');
+    if (viewFechaEl) {
+        viewFechaEl.addEventListener('change', async function () {
+            const selEnsayo = document.getElementById('view_ensayo_nombre');
+            if (!selEnsayo) return;
+            const fecha = this.value ? this.value.trim() : '';
+            selEnsayo.innerHTML = '<option value="" disabled selected>Seleccione ensayo...</option>';
+            if (!fecha) return;
+            try {
+                const res = await getEnsayosPorFecha(fecha);
+                if (res.ok && res.ensayos && res.ensayos.length > 0) {
+                    res.ensayos.forEach(function (e) {
+                        const opt = document.createElement('option');
+                        opt.value = e;
+                        opt.textContent = e;
+                        selEnsayo.appendChild(opt);
+                    });
+                    if (res.fromCache) Swal.fire({ title: 'Datos guardados', text: 'Usando última data (sin conexión).', icon: 'info', timer: 2000, showConfirmButton: false });
+                }
+            } catch (err) {
+                Swal.fire({ title: 'Error', text: err.message || 'No se pudieron cargar los ensayos.', icon: 'error' });
+            }
+        });
+    }
+
+    const btnCargarDatos = document.getElementById('btn_cargar_datos');
+    if (btnCargarDatos) {
+        btnCargarDatos.addEventListener('click', async function () {
+            const fechaEl = document.getElementById('view_fecha');
+            const ensayoEl = document.getElementById('view_ensayo_nombre');
+            const fecha = fechaEl && fechaEl.value ? fechaEl.value.trim() : '';
+            const ensayoNombre = ensayoEl && ensayoEl.value ? ensayoEl.value.trim() : '';
+            if (!fecha || !ensayoNombre) {
+                Swal.fire({ title: 'Faltan datos', text: 'Elige fecha y ensayo para cargar.', icon: 'warning' });
+                return;
+            }
+            try {
+                const res = await getDatosPacking(fecha, ensayoNombre);
+                if (!res.ok || !res.data) {
+                    Swal.fire({ title: 'Sin datos', text: res.error || 'No hay registro para esa fecha y ensayo.', icon: 'info' });
+                    return;
+                }
+                const d = res.data;
+                const set = function (id, val) { const el = document.getElementById(id); if (el) el.value = (val != null && val !== '') ? String(val) : ''; };
+                set('view_etapa', d.TRAZ_ETAPA);
+                set('view_campo', d.TRAZ_CAMPO);
+                set('view_turno', d.TRAZ_LIBRE);
+                set('view_variedad', d.VARIEDAD);
+                set('view_placa', d.PLACA_VEHICULO);
+                set('view_guia_despacho', d.GUIA_REMISION);
+                set('view_rotulo', d.ENSAYO_NUMERO);
+                Swal.fire({ title: res.fromCache ? 'Datos cargados (caché)' : 'Datos cargados', icon: 'success', timer: 1500, showConfirmButton: false });
+            } catch (err) {
+                Swal.fire({ title: 'Error', text: err.message || 'No se pudo cargar.', icon: 'error' });
+            }
+        });
+    }
+
+    // Sincronizar vista al cargar (visual por defecto si no es packing)
+    (function syncVistaInicial() {
+        const v = selectMedicion ? selectMedicion.value : '';
+        if (v === 'packing') {
+            if (viewVisualContainer) viewVisualContainer.style.display = 'none';
+            if (viewPackingContainer) viewPackingContainer.style.display = 'block';
+            if (btnGuardarRegistro) btnGuardarRegistro.style.display = 'none';
+            cargarFechasPacking();
+        } else {
+            if (viewVisualContainer) viewVisualContainer.style.display = 'block';
+            if (viewPackingContainer) viewPackingContainer.style.display = 'none';
+            if (btnGuardarRegistro) btnGuardarRegistro.style.display = 'block';
+        }
+    })();
 
     // ========================================
     // RESTAURAR DATOS DEL ENSAYO
@@ -395,15 +583,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     agregarFilaHumedad(item, tbodyHumedad, index + 1);
                 });
                 actualizarContador('next_clam_humedad', datos.humedad.length);
-            }
-            
-            const tbodyTempAmb = document.getElementById('tbody-temp-ambiente');
-            if (tbodyTempAmb) {
-                tbodyTempAmb.innerHTML = '';
-                datos.tempambiente.forEach((item, index) => {
-                    agregarFilaTempAmbiente(item, tbodyTempAmb, index + 1);
-                });
-                actualizarContador('next_clam_temp_amb', datos.tempambiente.length);
             }
             
             const tbodyPresion = document.getElementById('tbody-presion');
@@ -697,52 +876,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ========================================
-    // AGREGAR FILA - TEMP AMBIENTE
-    // ========================================
-    function agregarFilaTempAmbiente(data, tbody, clamNum) {
-        const row = document.createElement('tr');
-        row.setAttribute('data-clam', clamNum);
-        row.setAttribute('data-inicio', data.inicio || '');
-        row.setAttribute('data-termino', data.termino || '');
-        row.setAttribute('data-llegada', data.llegada || '');
-        row.setAttribute('data-despacho', data.despacho || '');
-
-        row.innerHTML = `
-            <td class="clam-id">${clamNum}</td>
-            <td>${data.inicio || '-'}°C</td>
-            <td>${data.termino || '-'}°C</td>
-            <td>${data.llegada || '-'}°C</td>
-            <td>${data.despacho || '-'}°C</td>
-            <td>
-                <button type="button" class="btn-edit-row" title="Editar">
-                    <i data-lucide="pencil"></i>
-                </button>
-                <button type="button" class="btn-delete-row" title="Eliminar">
-                    <i data-lucide="trash-2"></i>
-                </button>
-                <button type="button" class="btn-replicate-row" title="Replicar">
-                    <i data-lucide="copy"></i>
-                </button>
-            </td>
-        `;
-
-        tbody.appendChild(row);
-        if (window.lucide) lucide.createIcons();
-
-        row.querySelector('.btn-edit-row').addEventListener('click', () => {
-            editarFilaTempAmbiente(clamNum, data);
-        });
-
-        row.querySelector('.btn-delete-row').addEventListener('click', () => {
-            eliminarFila('tempambiente', clamNum);
-        });
-
-        row.querySelector('.btn-replicate-row').addEventListener('click', () => {
-            replicarFila('tempambiente', data);
-        });
-    }
-
-    // ========================================
     // AGREGAR FILA - PRESIÓN AMBIENTE
     // ========================================
     function agregarFilaPresionAmbiente(data, tbody, clamNum) {
@@ -909,12 +1042,29 @@ document.addEventListener('DOMContentLoaded', () => {
             showCancelButton: true,
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
-                const jarra = document.getElementById('edit_jarra').value;
+                const jarra = String(document.getElementById('edit_jarra').value || '').trim();
                 const p1 = document.getElementById('edit_p1').value;
                 const p2 = document.getElementById('edit_p2').value;
                 const llegada = document.getElementById('edit_llegada').value;
                 const despacho = document.getElementById('edit_despacho').value;
-
+                if (jarra !== '' && !esNumeroPositivoEntero(jarra)) {
+                    Swal.showValidationMessage('N° Jarra debe ser un número entero positivo.');
+                    return undefined;
+                }
+                if (p1 !== '' && p2 !== '') {
+                    const n1 = Number(p1), n2 = Number(p2);
+                    if (Number.isNaN(n2) || n2 > n1) {
+                        Swal.showValidationMessage('Peso 2 debe ser menor o igual que Peso 1.');
+                        return undefined;
+                    }
+                }
+                if (llegada !== '' && despacho !== '') {
+                    const nL = Number(llegada), nD = Number(despacho);
+                    if (Number.isNaN(nD) || nD > nL) {
+                        Swal.showValidationMessage('Despacho acopio debe ser ≤ Llegada acopio.');
+                        return undefined;
+                    }
+                }
                 return { jarra, p1, p2, llegada, despacho };
             }
         }).then((result) => {
@@ -968,11 +1118,18 @@ document.addEventListener('DOMContentLoaded', () => {
             showCancelButton: true,
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
-                const jarra = document.getElementById('edit_jarra').value;
+                const jarra = String(document.getElementById('edit_jarra').value || '').trim();
                 const tipo = document.getElementById('edit_tipo').value;
                 const inicio = document.getElementById('edit_inicio').value;
                 const termino = document.getElementById('edit_termino').value;
-
+                if (!esNumeroPositivoEntero(jarra)) {
+                    Swal.showValidationMessage('N° Jarra debe ser un número entero positivo.');
+                    return undefined;
+                }
+                if (inicio && termino && !tiempoMenorOIgual(inicio, termino)) {
+                    Swal.showValidationMessage('La hora de término debe ser mayor o igual que la de inicio.');
+                    return undefined;
+                }
                 const tiempo = calcularTiempoEmpleado(inicio, termino);
                 return { jarra, tipo, inicio, termino, tiempo };
             }
@@ -1040,15 +1197,25 @@ document.addEventListener('DOMContentLoaded', () => {
             showCancelButton: true,
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
+                const campos = ['edit_inicio_amb','edit_inicio_pul','edit_termino_amb','edit_termino_pul','edit_llegada_amb','edit_llegada_pul','edit_despacho_amb','edit_despacho_pul'];
+                const vals = {};
+                for (const id of campos) {
+                    const v = String(document.getElementById(id).value || '').trim();
+                    vals[id] = v;
+                    if (v === '') {
+                        Swal.showValidationMessage('Todos los campos de temperatura son obligatorios.');
+                        return undefined;
+                    }
+                    if (!esNumeroNoNegativo(v)) {
+                        Swal.showValidationMessage('Solo números positivos o cero (sin negativos ni letras).');
+                        return undefined;
+                    }
+                }
                 return {
-                    inicio_amb: document.getElementById('edit_inicio_amb').value || '',
-                    inicio_pul: document.getElementById('edit_inicio_pul').value || '',
-                    termino_amb: document.getElementById('edit_termino_amb').value || '',
-                    termino_pul: document.getElementById('edit_termino_pul').value || '',
-                    llegada_amb: document.getElementById('edit_llegada_amb').value || '',
-                    llegada_pul: document.getElementById('edit_llegada_pul').value || '',
-                    despacho_amb: document.getElementById('edit_despacho_amb').value || '',
-                    despacho_pul: document.getElementById('edit_despacho_pul').value || ''
+                    inicio_amb: vals.edit_inicio_amb, inicio_pul: vals.edit_inicio_pul,
+                    termino_amb: vals.edit_termino_amb, termino_pul: vals.edit_termino_pul,
+                    llegada_amb: vals.edit_llegada_amb, llegada_pul: vals.edit_llegada_pul,
+                    despacho_amb: vals.edit_despacho_amb, despacho_pul: vals.edit_despacho_pul
                 };
             }
         }).then((result) => {
@@ -1102,13 +1269,19 @@ document.addEventListener('DOMContentLoaded', () => {
             showCancelButton: true,
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
-                return {
-                    inicio: document.getElementById('edit_inicio').value || '',
-                    perdida: document.getElementById('edit_perdida').value || '',
-                    termino: document.getElementById('edit_termino').value || '',
-                    llegada: document.getElementById('edit_llegada').value || '',
-                    despacho: document.getElementById('edit_despacho').value || ''
-                };
+                const inicio = document.getElementById('edit_inicio').value || '';
+                const perdida = document.getElementById('edit_perdida').value || '';
+                const termino = document.getElementById('edit_termino').value || '';
+                const llegada = document.getElementById('edit_llegada').value || '';
+                const despacho = document.getElementById('edit_despacho').value || '';
+                const orden = [inicio, perdida, termino, llegada, despacho];
+                for (let i = 0; i < orden.length - 1; i++) {
+                    if (orden[i] && orden[i + 1] && !tiempoMenorOIgual(orden[i], orden[i + 1])) {
+                        Swal.showValidationMessage('Cada hora debe ser mayor o igual a la anterior (orden: Inicio → Pérdida → Término → Llegada → Despacho).');
+                        return undefined;
+                    }
+                }
+                return { inicio, perdida, termino, llegada, despacho };
             }
         }).then((result) => {
             if (result.isConfirmed) {
@@ -1157,12 +1330,21 @@ document.addEventListener('DOMContentLoaded', () => {
             showCancelButton: true,
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
-                return {
-                    inicio: document.getElementById('edit_inicio').value || '',
-                    termino: document.getElementById('edit_termino').value || '',
-                    llegada: document.getElementById('edit_llegada').value || '',
-                    despacho: document.getElementById('edit_despacho').value || ''
-                };
+                const inicio = (document.getElementById('edit_inicio').value || '').trim();
+                const termino = (document.getElementById('edit_termino').value || '').trim();
+                const llegada = (document.getElementById('edit_llegada').value || '').trim();
+                const despacho = (document.getElementById('edit_despacho').value || '').trim();
+                if (!inicio || !termino || !llegada || !despacho) {
+                    Swal.showValidationMessage('Todos los campos de humedad son obligatorios.');
+                    return undefined;
+                }
+                for (const v of [inicio, termino, llegada, despacho]) {
+                    if (!esNumeroNoNegativo(v)) {
+                        Swal.showValidationMessage('Solo números positivos o cero (sin negativos ni letras).');
+                        return undefined;
+                    }
+                }
+                return { inicio, termino, llegada, despacho };
             }
         }).then((result) => {
             if (result.isConfirmed) {
@@ -1172,60 +1354,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 Swal.fire({
                     title: 'Actualizado',
                     text: 'Humedad actualizada correctamente',
-                    icon: 'success',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-            }
-        });
-    }
-
-    // ========================================
-    // EDITAR FILA - TEMP AMBIENTE
-    // ========================================
-    function editarFilaTempAmbiente(clamNum, dataActual) {
-        Swal.fire({
-            title: `Editar Temp. Ambiente #${clamNum}`,
-            html: `
-                <div style="display: flex; flex-direction: column; gap: 15px;">
-                    <div>
-                        <label style="display: block; text-align: left; margin-bottom: 5px;">Inicio (°C):</label>
-                        <input type="number" id="edit_inicio" class="swal2-input" step="0.1" value="${dataActual.inicio || ''}" style="width: 90%; margin: 0;">
-                    </div>
-                    <div>
-                        <label style="display: block; text-align: left; margin-bottom: 5px;">Término (°C):</label>
-                        <input type="number" id="edit_termino" class="swal2-input" step="0.1" value="${dataActual.termino || ''}" style="width: 90%; margin: 0;">
-                    </div>
-                    <div>
-                        <label style="display: block; text-align: left; margin-bottom: 5px;">Llegada (°C):</label>
-                        <input type="number" id="edit_llegada" class="swal2-input" step="0.1" value="${dataActual.llegada || ''}" style="width: 90%; margin: 0;">
-                    </div>
-                    <div>
-                        <label style="display: block; text-align: left; margin-bottom: 5px;">Despacho (°C):</label>
-                        <input type="number" id="edit_despacho" class="swal2-input" step="0.1" value="${dataActual.despacho || ''}" style="width: 90%; margin: 0;">
-                    </div>
-                </div>
-            `,
-            confirmButtonText: 'Guardar',
-            confirmButtonColor: '#2f7cc0',
-            showCancelButton: true,
-            cancelButtonText: 'Cancelar',
-            preConfirm: () => {
-                return {
-                    inicio: document.getElementById('edit_inicio').value || '',
-                    termino: document.getElementById('edit_termino').value || '',
-                    llegada: document.getElementById('edit_llegada').value || '',
-                    despacho: document.getElementById('edit_despacho').value || ''
-                };
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                datosEnsayos[tipoActual][ensayoActual].tempambiente[clamNum - 1] = result.value;
-                restaurarDatosEnsayo(tipoActual, ensayoActual);
-                
-                Swal.fire({
-                    title: 'Actualizado',
-                    text: 'Temperatura actualizada correctamente',
                     icon: 'success',
                     timer: 1500,
                     showConfirmButton: false
@@ -1265,12 +1393,21 @@ document.addEventListener('DOMContentLoaded', () => {
             showCancelButton: true,
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
-                return {
-                    inicio: document.getElementById('edit_inicio').value || '',
-                    termino: document.getElementById('edit_termino').value || '',
-                    llegada: document.getElementById('edit_llegada').value || '',
-                    despacho: document.getElementById('edit_despacho').value || ''
-                };
+                const inicio = (document.getElementById('edit_inicio').value || '').trim();
+                const termino = (document.getElementById('edit_termino').value || '').trim();
+                const llegada = (document.getElementById('edit_llegada').value || '').trim();
+                const despacho = (document.getElementById('edit_despacho').value || '').trim();
+                if (!inicio || !termino || !llegada || !despacho) {
+                    Swal.showValidationMessage('Todos los campos de presión ambiente son obligatorios.');
+                    return undefined;
+                }
+                for (const v of [inicio, termino, llegada, despacho]) {
+                    if (!esNumeroNoNegativo(v)) {
+                        Swal.showValidationMessage('Solo números positivos o cero (sin negativos ni letras).');
+                        return undefined;
+                    }
+                }
+                return { inicio, termino, llegada, despacho };
             }
         }).then((result) => {
             if (result.isConfirmed) {
@@ -1319,12 +1456,21 @@ document.addEventListener('DOMContentLoaded', () => {
             showCancelButton: true,
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
-                return {
-                    inicio: document.getElementById('edit_inicio').value || '',
-                    termino: document.getElementById('edit_termino').value || '',
-                    llegada: document.getElementById('edit_llegada').value || '',
-                    despacho: document.getElementById('edit_despacho').value || ''
-                };
+                const inicio = (document.getElementById('edit_inicio').value || '').trim();
+                const termino = (document.getElementById('edit_termino').value || '').trim();
+                const llegada = (document.getElementById('edit_llegada').value || '').trim();
+                const despacho = (document.getElementById('edit_despacho').value || '').trim();
+                if (!inicio || !termino || !llegada || !despacho) {
+                    Swal.showValidationMessage('Todos los campos de presión fruta son obligatorios.');
+                    return undefined;
+                }
+                for (const v of [inicio, termino, llegada, despacho]) {
+                    if (!esNumeroNoNegativo(v)) {
+                        Swal.showValidationMessage('Solo números positivos o cero (sin negativos ni letras).');
+                        return undefined;
+                    }
+                }
+                return { inicio, termino, llegada, despacho };
             }
         }).then((result) => {
             if (result.isConfirmed) {
@@ -1499,7 +1645,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ========================================
-    // AÑADIR PESOS (VISUAL) - SIN VALIDACIONES
+    // AÑADIR PESOS (VISUAL) - VALIDACIONES
     // ========================================
     const btnAddVisual = document.getElementById('btn-add-visual');
     if (btnAddVisual) {
@@ -1513,11 +1659,45 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            const jarra = document.getElementById('reg_visual_n_jarra').value || '';
-            const p1 = document.getElementById('reg_visual_peso_1').value || '';
-            const p2 = document.getElementById('reg_visual_peso_2').value || '';
-            const llegada = document.getElementById('reg_visual_llegada_acopio').value || '';
-            const despacho = document.getElementById('reg_visual_despacho_acopio').value || '';
+            const jarra = document.getElementById('reg_visual_n_jarra').value.trim();
+            const p1 = document.getElementById('reg_visual_peso_1').value.trim();
+            const p2 = document.getElementById('reg_visual_peso_2').value.trim();
+            const llegada = document.getElementById('reg_visual_llegada_acopio').value.trim();
+            const despacho = document.getElementById('reg_visual_despacho_acopio').value.trim();
+
+            if (jarra !== '' && !esNumeroPositivoEntero(jarra)) {
+                Swal.fire({
+                    title: 'N° Jarra inválido',
+                    text: 'El N° Jarra debe ser un número entero positivo (sin negativos ni letras).',
+                    icon: 'warning',
+                    confirmButtonColor: '#2f7cc0'
+                });
+                return;
+            }
+            if (p1 !== '' && p2 !== '') {
+                const n1 = Number(p1), n2 = Number(p2);
+                if (Number.isNaN(n2) || n2 > n1) {
+                    Swal.fire({
+                        title: 'Peso 2 inválido',
+                        text: 'Peso 2 debe ser menor o igual que Peso 1.',
+                        icon: 'warning',
+                        confirmButtonColor: '#2f7cc0'
+                    });
+                    return;
+                }
+            }
+            if (llegada !== '' && despacho !== '') {
+                const nLleg = Number(llegada), nDesp = Number(despacho);
+                if (Number.isNaN(nDesp) || nDesp > nLleg) {
+                    Swal.fire({
+                        title: 'Despacho inválido',
+                        text: 'Despacho acopio debe ser menor o igual que Llegada acopio.',
+                        icon: 'warning',
+                        confirmButtonColor: '#2f7cc0'
+                    });
+                    return;
+                }
+            }
 
             const tbody = document.getElementById('tbody-visual');
             const rowData = { jarra, p1, p2, llegada, despacho };
@@ -1539,7 +1719,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ========================================
-    // AÑADIR JARRAS - SIN VALIDACIONES
+    // AÑADIR JARRAS - VALIDACIONES
     // ========================================
     const btnAddJarras = document.getElementById('btn-add-jarras');
     if (btnAddJarras) {
@@ -1553,10 +1733,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            const jarra = document.getElementById('reg_jarras_n_jarra').value || '';
+            const jarra = document.getElementById('reg_jarras_n_jarra').value.trim();
             const tipo = document.getElementById('reg_jarras_tipo').value || '';
             const inicio = document.getElementById('reg_jarras_inicio').value || '';
             const termino = document.getElementById('reg_jarras_termino').value || '';
+
+            if (!esNumeroPositivoEntero(jarra)) {
+                Swal.fire({
+                    title: 'N° Jarra inválido',
+                    text: 'El N° Jarra debe ser un número entero positivo (sin negativos ni letras).',
+                    icon: 'warning',
+                    confirmButtonColor: '#2f7cc0'
+                });
+                return;
+            }
+            if (inicio && termino && !tiempoMenorOIgual(inicio, termino)) {
+                Swal.fire({
+                    title: 'Hora inválida',
+                    text: 'La hora de término debe ser mayor o igual que la hora de inicio.',
+                    icon: 'warning',
+                    confirmButtonColor: '#2f7cc0'
+                });
+                return;
+            }
 
             const tiempo = calcularTiempoEmpleado(inicio, termino);
             const tbody = document.getElementById('tbody-jarras');
@@ -1579,7 +1778,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ========================================
-    // AÑADIR TEMPERATURAS - SIN VALIDACIONES
+    // AÑADIR TEMPERATURAS - VALIDACIONES (todos obligatorios, no negativos)
     // ========================================
     const btnAddTemp = document.getElementById('btn-add-temperaturas');
     if (btnAddTemp) {
@@ -1593,14 +1792,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            const inicio_amb = document.getElementById('reg_temp_inicio_amb').value || '';
-            const inicio_pul = document.getElementById('reg_temp_inicio_pul').value || '';
-            const termino_amb = document.getElementById('reg_temp_termino_amb').value || '';
-            const termino_pul = document.getElementById('reg_temp_termino_pul').value || '';
-            const llegada_amb = document.getElementById('reg_temp_llegada_amb').value || '';
-            const llegada_pul = document.getElementById('reg_temp_llegada_pul').value || '';
-            const despacho_amb = document.getElementById('reg_temp_despacho_amb').value || '';
-            const despacho_pul = document.getElementById('reg_temp_despacho_pul').value || '';
+            const campos = [
+                { id: 'reg_temp_inicio_amb', label: 'Temp. inicio ambiente' },
+                { id: 'reg_temp_inicio_pul', label: 'Temp. inicio pulpa' },
+                { id: 'reg_temp_termino_amb', label: 'Temp. término ambiente' },
+                { id: 'reg_temp_termino_pul', label: 'Temp. término pulpa' },
+                { id: 'reg_temp_llegada_amb', label: 'Temp. llegada ambiente' },
+                { id: 'reg_temp_llegada_pul', label: 'Temp. llegada pulpa' },
+                { id: 'reg_temp_despacho_amb', label: 'Temp. despacho ambiente' },
+                { id: 'reg_temp_despacho_pul', label: 'Temp. despacho pulpa' }
+            ];
+            const valores = {};
+            for (const c of campos) {
+                const v = (document.getElementById(c.id) && document.getElementById(c.id).value || '').trim();
+                valores[c.id] = v;
+                if (v === '') {
+                    Swal.fire({
+                        title: 'Campo obligatorio',
+                        text: `Debes completar todos los campos de temperatura. Falta: ${c.label}.`,
+                        icon: 'warning',
+                        confirmButtonColor: '#2f7cc0'
+                    });
+                    return;
+                }
+                if (!esNumeroNoNegativo(v)) {
+                    Swal.fire({
+                        title: 'Valor inválido',
+                        text: `${c.label}: solo números positivos o cero (sin negativos ni letras).`,
+                        icon: 'warning',
+                        confirmButtonColor: '#2f7cc0'
+                    });
+                    return;
+                }
+            }
+
+            const inicio_amb = valores['reg_temp_inicio_amb'];
+            const inicio_pul = valores['reg_temp_inicio_pul'];
+            const termino_amb = valores['reg_temp_termino_amb'];
+            const termino_pul = valores['reg_temp_termino_pul'];
+            const llegada_amb = valores['reg_temp_llegada_amb'];
+            const llegada_pul = valores['reg_temp_llegada_pul'];
+            const despacho_amb = valores['reg_temp_despacho_amb'];
+            const despacho_pul = valores['reg_temp_despacho_pul'];
 
             const tbody = document.getElementById('tbody-temperaturas');
             const rowData = { inicio_amb, inicio_pul, termino_amb, termino_pul, llegada_amb, llegada_pul, despacho_amb, despacho_pul };
@@ -1625,7 +1858,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ========================================
-    // AÑADIR TIEMPOS - SIN VALIDACIONES
+    // AÑADIR TIEMPOS - VALIDACIONES (orden ascendente)
     // ========================================
     const btnAddTiempos = document.getElementById('btn-add-tiempos');
     if (btnAddTiempos) {
@@ -1644,6 +1877,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const termino = document.getElementById('reg_tiempos_termino_c').value || '';
             const llegada = document.getElementById('reg_tiempos_llegada_acopio').value || '';
             const despacho = document.getElementById('reg_tiempos_despacho_acopio').value || '';
+
+            const orden = [inicio, perdida, termino, llegada, despacho];
+            for (let i = 0; i < orden.length - 1; i++) {
+                if (orden[i] && orden[i + 1] && !tiempoMenorOIgual(orden[i], orden[i + 1])) {
+                    const nombres = ['Inicio cosecha', 'Pérdida peso', 'Término cosecha', 'Llegada acopio', 'Despacho acopio'];
+                    Swal.fire({
+                        title: 'Orden de tiempos inválido',
+                        text: `Cada hora debe ser mayor o igual a la anterior. Revisa "${nombres[i]}" y "${nombres[i + 1]}".`,
+                        icon: 'warning',
+                        confirmButtonColor: '#2f7cc0'
+                    });
+                    return;
+                }
+            }
 
             const tbody = document.getElementById('tbody-tiempos');
             const rowData = { inicio, perdida, termino, llegada, despacho };
@@ -1665,7 +1912,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ========================================
-    // AÑADIR HUMEDAD - SIN VALIDACIONES
+    // AÑADIR HUMEDAD - VALIDACIONES (todos obligatorios, no negativos)
     // ========================================
     const btnAddHumedad = document.getElementById('btn-add-humedad');
     if (btnAddHumedad) {
@@ -1679,11 +1926,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            const inicio = document.getElementById('reg_humedad_inicio').value || '';
-            const termino = document.getElementById('reg_humedad_termino').value || '';
-            const llegada = document.getElementById('reg_humedad_llegada').value || '';
-            const despacho = document.getElementById('reg_humedad_despacho').value || '';
+            const ids = ['reg_humedad_inicio', 'reg_humedad_termino', 'reg_humedad_llegada', 'reg_humedad_despacho'];
+            const labels = ['Humedad inicio', 'Humedad término', 'Humedad llegada', 'Humedad despacho'];
+            const vals = ids.map(id => (document.getElementById(id) && document.getElementById(id).value || '').trim());
+            for (let i = 0; i < ids.length; i++) {
+                if (vals[i] === '') {
+                    Swal.fire({
+                        title: 'Campo obligatorio',
+                        text: `Todos los campos de humedad deben estar llenos. Falta: ${labels[i]}.`,
+                        icon: 'warning',
+                        confirmButtonColor: '#2f7cc0'
+                    });
+                    return;
+                }
+                if (!esNumeroNoNegativo(vals[i])) {
+                    Swal.fire({
+                        title: 'Valor inválido',
+                        text: 'Humedad: solo números positivos o cero (sin negativos ni letras).',
+                        icon: 'warning',
+                        confirmButtonColor: '#2f7cc0'
+                    });
+                    return;
+                }
+            }
 
+            const [inicio, termino, llegada, despacho] = vals;
             const tbody = document.getElementById('tbody-humedad');
             const rowData = { inicio, termino, llegada, despacho };
             
@@ -1703,45 +1970,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ========================================
-    // AÑADIR TEMP AMBIENTE - SIN VALIDACIONES
-    // ========================================
-    const btnAddTempAmb = document.getElementById('btn-add-temp-amb');
-    if (btnAddTempAmb) {
-        btnAddTempAmb.addEventListener('click', () => {
-            if (!ensayoActual) {
-                Swal.fire({ 
-                    title: 'Atención', 
-                    text: 'Primero selecciona un Rótulo de Muestra (Ensayo)', 
-                    icon: 'warning' 
-                });
-                return;
-            }
-            
-            const inicio = document.getElementById('reg_temp_amb_inicio').value || '';
-            const termino = document.getElementById('reg_temp_amb_termino').value || '';
-            const llegada = document.getElementById('reg_temp_amb_llegada').value || '';
-            const despacho = document.getElementById('reg_temp_amb_despacho').value || '';
-
-            const tbody = document.getElementById('tbody-temp-ambiente');
-            const rowData = { inicio, termino, llegada, despacho };
-            
-            datosEnsayos.visual[ensayoActual].tempambiente.push(rowData);
-            const clamNum = datosEnsayos.visual[ensayoActual].tempambiente.length;
-            
-            agregarFilaTempAmbiente(rowData, tbody, clamNum);
-            actualizarContador('next_clam_temp_amb', clamNum);
-            window.formHasChanges = true;
-
-            document.getElementById('reg_temp_amb_inicio').value = '';
-            document.getElementById('reg_temp_amb_termino').value = '';
-            document.getElementById('reg_temp_amb_llegada').value = '';
-            document.getElementById('reg_temp_amb_despacho').value = '';
-            document.getElementById('reg_temp_amb_inicio').focus();
-        });
-    }
-
-    // ========================================
-    // AÑADIR PRESIÓN AMBIENTE - SIN VALIDACIONES
+    // AÑADIR PRESIÓN AMBIENTE - VALIDACIONES (todos obligatorios, no negativos)
     // ========================================
     const btnAddPresion = document.getElementById('btn-add-presion');
     if (btnAddPresion) {
@@ -1755,11 +1984,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            const inicio = document.getElementById('reg_presion_amb_inicio').value || '';
-            const termino = document.getElementById('reg_presion_amb_termino').value || '';
-            const llegada = document.getElementById('reg_presion_amb_llegada').value || '';
-            const despacho = document.getElementById('reg_presion_amb_despacho').value || '';
+            const ids = ['reg_presion_amb_inicio', 'reg_presion_amb_termino', 'reg_presion_amb_llegada', 'reg_presion_amb_despacho'];
+            const vals = ids.map(id => (document.getElementById(id) && document.getElementById(id).value || '').trim());
+            for (let i = 0; i < ids.length; i++) {
+                if (vals[i] === '') {
+                    Swal.fire({
+                        title: 'Campo obligatorio',
+                        text: 'Todos los campos de presión ambiente deben estar llenos (sin negativos ni letras).',
+                        icon: 'warning',
+                        confirmButtonColor: '#2f7cc0'
+                    });
+                    return;
+                }
+                if (!esNumeroNoNegativo(vals[i])) {
+                    Swal.fire({
+                        title: 'Valor inválido',
+                        text: 'Presión ambiente: solo números positivos o cero (sin negativos ni letras).',
+                        icon: 'warning',
+                        confirmButtonColor: '#2f7cc0'
+                    });
+                    return;
+                }
+            }
 
+            const [inicio, termino, llegada, despacho] = vals;
             const tbody = document.getElementById('tbody-presion');
             const rowData = { inicio, termino, llegada, despacho };
             
@@ -1779,7 +2027,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ========================================
-    // AÑADIR PRESIÓN FRUTA - SIN VALIDACIONES
+    // AÑADIR PRESIÓN FRUTA - VALIDACIONES (todos obligatorios, no negativos)
     // ========================================
     const btnAddPresionFruta = document.getElementById('btn-add-presion-fruta');
     if (btnAddPresionFruta) {
@@ -1793,11 +2041,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            const inicio = document.getElementById('reg_presion_fruta_inicio').value || '';
-            const termino = document.getElementById('reg_presion_fruta_termino').value || '';
-            const llegada = document.getElementById('reg_presion_fruta_llegada').value || '';
-            const despacho = document.getElementById('reg_presion_fruta_despacho').value || '';
+            const ids = ['reg_presion_fruta_inicio', 'reg_presion_fruta_termino', 'reg_presion_fruta_llegada', 'reg_presion_fruta_despacho'];
+            const vals = ids.map(id => (document.getElementById(id) && document.getElementById(id).value || '').trim());
+            for (let i = 0; i < ids.length; i++) {
+                if (vals[i] === '') {
+                    Swal.fire({
+                        title: 'Campo obligatorio',
+                        text: 'Todos los campos de presión fruta deben estar llenos (sin negativos ni letras).',
+                        icon: 'warning',
+                        confirmButtonColor: '#2f7cc0'
+                    });
+                    return;
+                }
+                if (!esNumeroNoNegativo(vals[i])) {
+                    Swal.fire({
+                        title: 'Valor inválido',
+                        text: 'Presión fruta: solo números positivos o cero (sin negativos ni letras).',
+                        icon: 'warning',
+                        confirmButtonColor: '#2f7cc0'
+                    });
+                    return;
+                }
+            }
 
+            const [inicio, termino, llegada, despacho] = vals;
             const tbody = document.getElementById('tbody-presion-fruta');
             const rowData = { inicio, termino, llegada, despacho };
             
@@ -1920,13 +2187,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (ensayo.visual && ensayo.visual.length > 0) {
                     const totalVisual = ensayo.visual.length;
                     
-                    const secciones = ['temperaturas', 'tiempos', 'humedad', 'tempambiente', 'presionambiente', 'presionfruta', 'observacion'];
+                    const secciones = ['temperaturas', 'tiempos', 'humedad', 'presionambiente', 'presionfruta', 'observacion'];
                     
                     for (let seccion of secciones) {
                         if (ensayo[seccion] && ensayo[seccion].length > 0 && ensayo[seccion].length !== totalVisual) {
+                            const nombresSeccion = { temperaturas: 'Temperaturas', tiempos: 'Tiempos', humedad: 'Humedad', presionambiente: 'Presión ambiente', presionfruta: 'Presión fruta', observacion: 'Observación' };
                             Swal.fire({
-                                title: 'Inconsistencia de Datos',
-                                text: `El Ensayo ${numEnsayo} tiene ${totalVisual} registros en Visual, pero ${ensayo[seccion].length} en ${seccion}. Todos deben tener la misma cantidad (excepto Jarras).`,
+                                title: 'Inconsistencia de filas',
+                                html: `El <strong>Ensayo ${numEnsayo}</strong> tiene <strong>${totalVisual}</strong> filas en Visual, pero <strong>${ensayo[seccion].length}</strong> en ${nombresSeccion[seccion] || seccion}.<br><br>Las filas deben coincidir en total (Jarras puede tener más o menos).`,
                                 icon: 'error',
                                 confirmButtonColor: '#d33'
                             });
@@ -1936,7 +2204,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Construir filas planas de 54 columnas para Excel
+            // Construir filas planas de 50 columnas para Excel (sin TEMP_AMB)
             const allRows = [];
             
             for (let numEnsayo in datosDelTipo) {
@@ -1954,7 +2222,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         const tempCorrespondiente = ensayo.temperaturas && ensayo.temperaturas[index] ? ensayo.temperaturas[index] : null;
                         const tiempoCorrespondiente = ensayo.tiempos && ensayo.tiempos[index] ? ensayo.tiempos[index] : null;
                         const humedadCorrespondiente = ensayo.humedad && ensayo.humedad[index] ? ensayo.humedad[index] : null;
-                        const tempAmbCorrespondiente = ensayo.tempambiente && ensayo.tempambiente[index] ? ensayo.tempambiente[index] : null;
                         const presionAmbCorrespondiente = ensayo.presionambiente && ensayo.presionambiente[index] ? ensayo.presionambiente[index] : null;
                         const presionFrutaCorrespondiente = ensayo.presionfruta && ensayo.presionfruta[index] ? ensayo.presionfruta[index] : null;
                         const obsCorrespondiente = ensayo.observacion && ensayo.observacion[index] ? ensayo.observacion[index] : null;
@@ -2003,12 +2270,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 llegada_acopio: parseFloat(humedadCorrespondiente.llegada) || null,
                                 despacho_acopio: parseFloat(humedadCorrespondiente.despacho) || null
                             } : null,
-                            temperatura_ambiente: tempAmbCorrespondiente ? {
-                                inicio: parseFloat(tempAmbCorrespondiente.inicio) || null,
-                                termino: parseFloat(tempAmbCorrespondiente.termino) || null,
-                                llegada_acopio: parseFloat(tempAmbCorrespondiente.llegada) || null,
-                                despacho_acopio: parseFloat(tempAmbCorrespondiente.despacho) || null
-                            } : null,
+                            temperatura_ambiente: null,
                             presion_vapor_ambiente: presionAmbCorrespondiente ? {
                                 inicio: parseFloat(presionAmbCorrespondiente.inicio) || null,
                                 termino: parseFloat(presionAmbCorrespondiente.termino) || null,
@@ -2071,12 +2333,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const ensayo_numero = parseInt(numEnsayo);
                     const ensayo_nombre = `Ensayo ${numEnsayo}`;
 
-                    // Convertir cada registro a fila plana de 54 columnas para Excel
+                    // Convertir cada registro a fila plana de 50 columnas (sin TEMP_AMB; wrapper_tempambiente eliminado)
                     registrosCombinados.forEach(reg => {
                         const tm = reg.temperatura_muestra;
                         const ti = reg.tiempos;
                         const hr = reg.humedad_relativa;
-                        const ta = reg.temperatura_ambiente;
                         const pva = reg.presion_vapor_ambiente;
                         const pvf = reg.presion_vapor_fruta;
 
@@ -2094,7 +2355,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             (tm?.despacho_acopio?.ambiente != null) ? tm.despacho_acopio.ambiente : '', (tm?.despacho_acopio?.pulpa != null) ? tm.despacho_acopio.pulpa : '',
                             (ti?.inicio_cosecha) || '', (ti?.perdida_peso) || '', (ti?.termino_cosecha) || '', (ti?.llegada_acopio) || '', (ti?.despacho_acopio) || '',
                             (hr?.inicio != null) ? hr.inicio : '', (hr?.termino != null) ? hr.termino : '', (hr?.llegada_acopio != null) ? hr.llegada_acopio : '', (hr?.despacho_acopio != null) ? hr.despacho_acopio : '',
-                            (ta?.inicio != null) ? ta.inicio : '', (ta?.termino != null) ? ta.termino : '', (ta?.llegada_acopio != null) ? ta.llegada_acopio : '', (ta?.despacho_acopio != null) ? ta.despacho_acopio : '',
                             (pva?.inicio != null) ? pva.inicio : '', (pva?.termino != null) ? pva.termino : '', (pva?.llegada_acopio != null) ? pva.llegada_acopio : '', (pva?.despacho_acopio != null) ? pva.despacho_acopio : '',
                             (pvf?.inicio != null) ? pvf.inicio : '', (pvf?.termino != null) ? pvf.termino : '', (pvf?.llegada_acopio != null) ? pvf.llegada_acopio : '', (pvf?.despacho_acopio != null) ? pvf.despacho_acopio : '',
                             reg.observacion || ''
@@ -2104,13 +2364,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Desde aquí empezamos el guardado real; bloqueamos el botón
             toggleSaving(true);
-
-            // Guardar localmente (y sincronizar si hay red)
             saveLocal({ rows: allRows });
             updateUI();
             window.formHasChanges = false;
+            if (typeof renderHistorial === 'function') renderHistorial();
 
             Swal.fire({
                 title: '¡Registro Guardado!',
@@ -2120,7 +2378,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 confirmButtonText: 'Entendido'
             }).then(() => {
                 document.getElementById('cosecha-form').reset();
-                campoFecha.value = new Date().toISOString().split('T')[0];
+                if (campoFecha) campoFecha.value = new Date().toISOString().split('T')[0];
                 window.location.reload();
             }).finally(() => {
                 toggleSaving(false);
