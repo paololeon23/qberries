@@ -368,6 +368,138 @@ label .lucide {
     border-left: 5px solid var(--primary); 
 }
 
+/* ========== PACKING: bloques separados, sin fondo blanco ========== */
+.packing-container {
+    background: transparent;
+}
+
+/* Fila Fecha + Ensayo en una sola línea (2 columnas + botón) */
+.row-fecha-ensayo {
+    flex-wrap: nowrap;
+    align-items: flex-end;
+}
+.row-fecha-ensayo .col-fecha,
+.row-fecha-ensayo .col-ensayo {
+    min-width: 140px;
+    flex: 1;
+}
+.row-fecha-ensayo .col-btn-cargar {
+    flex: 0 0 auto;
+    min-width: 0;
+}
+@media (max-width: 520px) {
+    .row-fecha-ensayo {
+        flex-wrap: wrap;
+    }
+    .row-fecha-ensayo .col-btn-cargar {
+        width: 100%;
+    }
+}
+
+/* Loading spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+}
+.loading-spinner.btn-spinner {
+    width: 16px;
+    height: 16px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+.ensayo-select-wrap {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+.ensayo-select-wrap .loading-spinner {
+    position: absolute;
+    right: 36px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Bloqueo visual al cargar (packing) */
+.packing-fecha-ensayo-row.is-loading,
+#packing_datos_section.is-loading {
+    position: relative;
+    pointer-events: none;
+    user-select: none;
+}
+.packing-fecha-ensayo-row.is-loading::after,
+#packing_datos_section.is-loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    z-index: 0;
+}
+.packing-fecha-ensayo-row.is-loading {
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 10px;
+    padding: 12px;
+}
+.btn-cargar-datos:disabled {
+    opacity: 0.85;
+    background: #1a5a8e;
+    cursor: not-allowed;
+}
+
+/* Datos cargados: solo visualización (bloqueo visible, no editables) */
+#packing_datos_section input.view-only,
+#packing_datos_section select.view-only,
+.datos-cargados-solo-lectura input.view-only,
+.datos-cargados-solo-lectura select.view-only {
+    background: #dde2e8 !important;
+    color: #333;
+    cursor: not-allowed;
+    border: 2px solid #b0b8c4;
+    padding: 12px;
+    min-height: 44px;
+    box-sizing: border-box;
+    pointer-events: none;
+    user-select: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+#packing_datos_section select.view-only,
+.datos-cargados-solo-lectura select.view-only {
+    background-image: none;
+}
+#packing_datos_section input.view-only:focus,
+#packing_datos_section select.view-only:focus,
+.datos-cargados-solo-lectura input.view-only:focus,
+.datos-cargados-solo-lectura select.view-only:focus {
+    outline: none;
+    box-shadow: none;
+    border-color: #b0b8c4;
+}
+.datos-cargados-solo-lectura .view-only-label,
+#packing_datos_section .view-only-label {
+    color: #555;
+    font-size: 1rem;
+}
+
+.view-no-ensayos-msg {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.view-no-ensayos-msg i {
+    flex-shrink: 0;
+}
+
 .collapsible-wrapper {
     margin-top: 15px;
     animation: fadeIn 0.3s ease;
@@ -595,6 +727,57 @@ label .lucide {
 }
 
 /* ========== HISTORIAL ========== */
+.historial-header-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+.historial-header-row h2 {
+    margin-right: auto;
+}
+.btn-historial-refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 0.875rem;
+    color: #2f7cc0;
+    background: #fff;
+    border: 1px solid #2f7cc0;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.btn-historial-refresh:hover {
+    background: #e8f0fe;
+}
+.btn-eliminar-envio {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    color: #c62828;
+    background: #fff;
+    border: 1px solid #ef5350;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.btn-eliminar-envio:hover {
+    background: #ffebee;
+}
+.historial-cell-accion {
+    white-space: nowrap;
+}
+.historial-servidor-wrap {
+    margin-bottom: 1rem;
+}
+.historial-cache-msg {
+    margin: 6px 0 0 0;
+    font-size: 0.8rem;
+    color: #666;
+}
+.historial-table-servidor {
+    font-size: 0.85rem;
+}
 .historial-list {
     display: flex;
     flex-direction: column;
@@ -673,6 +856,15 @@ label .lucide {
 .hist-status-subido {
     background: #e6f4ea;
     color: #1b5e20;
+}
+
+.hist-status-rechazado {
+    background: #ffecb3;
+    color: #7d5a00;
+}
+
+.historial-row-clickable {
+    cursor: pointer;
 }
 
 /* Historial - Tabla ordenada */

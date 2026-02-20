@@ -1,4 +1,4 @@
-import { saveLocal, updateUI, getDatosPacking, getFechasConDatos } from './network.js';
+import { saveLocal, updateUI, getDatosPacking, getEnsayosPorFecha, existeRegistroFechaEnsayo, getListadoRegistrados, STORAGE_KEY } from './network.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cosechaForm) cosechaForm.style.display = (view === 'nueva') ? 'block' : 'none';
         if (historialView) historialView.style.display = (view === 'historial') ? 'block' : 'none';
         if (recomendacionesView) recomendacionesView.style.display = (view === 'recomendaciones') ? 'block' : 'none';
-        if (view === 'historial') renderHistorial();
+        if (view === 'historial') renderHistorial(true);
     }
 
     document.querySelectorAll('.nav-link').forEach(a => {
@@ -141,10 +141,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Fecha actual por defecto
+    // Fecha actual en hora local (evita que toISOString muestre el día siguiente en zonas UTC-)
+    function fechaLocalHoy() {
+        var d = new Date();
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    }
+
     const campoFecha = document.getElementById('reg_fecha');
     if (campoFecha) {
-        campoFecha.value = new Date().toISOString().split('T')[0];
+        campoFecha.value = fechaLocalHoy();
     }
 
     // ========================================
@@ -168,11 +176,35 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========================================
     // 7. HISTORIAL - RENDER
     // ========================================
-    function renderHistorial() {
+    async function renderHistorial(shouldFetchListado) {
         const contenedor = document.getElementById('historial-list');
+        const contenedorServidor = document.getElementById('historial-servidor');
         if (!contenedor) return;
 
-        const items = JSON.parse(localStorage.getItem('tiempos_agro_seguro_v1')) || [];
+        // Listado en el servidor: solo al abrir Historial desde el menú (no al actualizar por storage)
+        if (shouldFetchListado && contenedorServidor && typeof getListadoRegistrados === 'function') {
+            try {
+                const res = await getListadoRegistrados();
+                if (res.ok && Array.isArray(res.registrados) && res.registrados.length > 0) {
+                    const porFecha = {};
+                    res.registrados.forEach(r => {
+                        const f = r.fecha || '';
+                        if (!porFecha[f]) porFecha[f] = [];
+                        porFecha[f].push({ num: r.ensayo_numero, nom: r.ensayo_nombre || ('Ensayo ' + r.ensayo_numero) });
+                    });
+                    const fechasOrd = Object.keys(porFecha).sort((a, b) => b.localeCompare(a));
+                    contenedorServidor.innerHTML = '<div class="historial-table-wrapper"><table class="historial-table historial-table-servidor"><thead><tr><th>Fecha</th><th>Ensayos registrados</th></tr></thead><tbody>' +
+                        fechasOrd.map(f => '<tr><td>' + f + '</td><td>' + (porFecha[f].map(e => e.num + ' (' + e.nom + ')').join(', ')) + '</td></tr>').join('') +
+                        '</tbody></table></div>' + (res.fromCache ? '<p class="historial-cache-msg">Desde caché (actualiza al tener conexión).</p>' : '');
+                } else {
+                    contenedorServidor.innerHTML = '<div class="empty-state"><p>No hay registros en el servidor o sin conexión.</p>' + (res.fromCache ? ' <small>Datos desde caché.</small>' : '') + '</div>';
+                }
+            } catch (_) {
+                contenedorServidor.innerHTML = '<div class="empty-state"><p>No se pudo cargar el listado (sin conexión o error).</p></div>';
+            }
+        }
+
+        const items = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         contenedor.innerHTML = '';
 
         if (items.length === 0) {
@@ -196,29 +228,34 @@ document.addEventListener('DOMContentLoaded', () => {
             const itemsDeDia = gruposPorFecha[fecha];
             const ensayosMap = {};
             itemsDeDia.forEach(item => {
-                const estado = item.status === 'subido' ? 'subido' : 'pendiente';
+                const estado = item.status === 'subido' ? 'subido' : (item.status === 'rechazado_duplicado' ? 'rechazado_duplicado' : 'pendiente');
                 (item.rows || []).forEach(row => {
                     const ensayoNum = row[10];
                     const ensayoNom = row[11] || ('Ensayo ' + ensayoNum);
                     const clave = `${ensayoNum}|${ensayoNom}`;
                     if (!ensayosMap[clave]) {
-                        ensayosMap[clave] = { ensayoNum, ensayoNom, totalClamshells: 0, estados: new Set() };
+                        ensayosMap[clave] = { ensayoNum, ensayoNom, totalClamshells: 0, estados: new Set(), rechazoMotivo: null };
                     }
                     ensayosMap[clave].totalClamshells += 1;
                     ensayosMap[clave].estados.add(estado);
+                    if (item.status === 'rechazado_duplicado' && item.rechazoMotivo)
+                        ensayosMap[clave].rechazoMotivo = item.rechazoMotivo;
                 });
             });
 
             Object.values(ensayosMap).forEach(info => {
-                const estadoFinal = info.estados.has('pendiente') ? 'pendiente' : 'subido';
-                const claseEstado = estadoFinal === 'pendiente' ? 'hist-status-pendiente' : 'hist-status-subido';
-                const textoEstado = estadoFinal === 'pendiente' ? 'Pendiente' : 'Subido';
+                const estadoFinal = info.estados.has('pendiente') ? 'pendiente' : info.estados.has('rechazado_duplicado') ? 'rechazado_duplicado' : 'subido';
+                const claseEstado = estadoFinal === 'pendiente' ? 'hist-status-pendiente' : (estadoFinal === 'rechazado_duplicado' ? 'hist-status-rechazado' : 'hist-status-subido');
+                const textoEstado = estadoFinal === 'pendiente' ? 'Pendiente' : (estadoFinal === 'rechazado_duplicado' ? 'No subido (ya registrado)' : 'Subido');
+                const detalleMsg = estadoFinal === 'pendiente' ? 'En cola; se enviará cuando haya conexión.' : (estadoFinal === 'rechazado_duplicado' ? (info.rechazoMotivo || 'No se subió porque ya estaba registrado este ensayo para esta fecha.') : 'Registro enviado correctamente.');
                 filasTabla.push({
                     fecha,
+                    ensayoNum: info.ensayoNum,
                     ensayo: info.ensayoNom || ('Ensayo ' + info.ensayoNum),
                     clamshells: info.totalClamshells,
                     estado: textoEstado,
-                    claseEstado
+                    claseEstado,
+                    detalleMsg
                 });
             });
         });
@@ -230,14 +267,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     <th>Ensayo</th>
                     <th>Clamshells</th>
                     <th>Estado</th>
+                    <th>Acción</th>
                 </tr>
             </thead>`;
+        const escapeAttr = (s) => String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const tbody = '<tbody>' + filasTabla.map(f => `
-            <tr>
+            <tr class="historial-row-clickable" data-detalle="${escapeAttr(f.detalleMsg)}" data-fecha="${escapeAttr(f.fecha)}" data-ensayo-num="${escapeAttr(String(f.ensayoNum))}" title="Toca para ver el detalle">
                 <td>${f.fecha}</td>
                 <td>${f.ensayo}</td>
                 <td>${f.clamshells}</td>
                 <td><span class="hist-status-badge ${f.claseEstado}">${f.estado}</span></td>
+                <td class="historial-cell-accion"><button type="button" class="btn-eliminar-envio" title="Quitar de la lista">Eliminar</button></td>
             </tr>
         `).join('') + '</tbody>';
 
@@ -249,11 +289,76 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${tbody}
             </table>`;
         contenedor.appendChild(table);
+
+        table.querySelectorAll('.historial-row-clickable').forEach(tr => {
+            tr.addEventListener('click', function (e) {
+                if (e.target.closest('.btn-eliminar-envio')) return;
+                const msg = this.getAttribute('data-detalle');
+                if (msg && typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Detalle del registro',
+                        text: msg,
+                        icon: 'info',
+                        confirmButtonColor: '#2f7cc0',
+                        confirmButtonText: 'Entendido'
+                    });
+                }
+            });
+        });
+
+        table.querySelectorAll('.btn-eliminar-envio').forEach(btn => {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const tr = this.closest('tr');
+                if (!tr) return;
+                const fecha = tr.getAttribute('data-fecha');
+                const ensayoNum = tr.getAttribute('data-ensayo-num');
+                if (fecha == null || ensayoNum == null) return;
+                if (typeof Swal === 'undefined') {
+                    eliminarEnvioDeHistorial(fecha, ensayoNum);
+                    return;
+                }
+                Swal.fire({
+                    title: '¿Quitar este envío de la lista?',
+                    html: 'Se quitará de tu historial local.<br><small>No se borra en el servidor.</small>',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, quitar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        eliminarEnvioDeHistorial(fecha, ensayoNum);
+                        renderHistorial(false);
+                        updateUI();
+                    }
+                });
+            });
+        });
+    }
+
+    function eliminarEnvioDeHistorial(fecha, ensayoNum) {
+        const items = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        const normalizar = (v) => (v == null || v === '') ? '' : String(v).trim();
+        const fn = normalizar(fecha);
+        const en = normalizar(ensayoNum);
+        const nuevos = [];
+        for (const item of items) {
+            const rows = (item.rows || []).filter(r => normalizar(r[0]) !== fn || normalizar(r[10]) !== en);
+            if (rows.length > 0) nuevos.push({ ...item, rows });
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(nuevos));
+        window.dispatchEvent(new CustomEvent('tiemposStorageUpdated'));
     }
 
     window.addEventListener('tiemposStorageUpdated', () => {
         const v = document.getElementById('view-historial');
-        if (v && v.style.display !== 'none') renderHistorial();
+        if (v && v.style.display !== 'none') renderHistorial(false);
+    });
+
+    document.getElementById('historial-btn-refresh')?.addEventListener('click', () => {
+        renderHistorial(true);
     });
 
     // ========================================
@@ -387,7 +492,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 wrappers.presionambiente.style.display = 'none';
                 wrappers.presionfruta.style.display = 'none';
                 wrappers.observacion.style.display = 'none';
-                cargarFechasPacking();
             }
             
             if (ensayoActual) {
@@ -436,68 +540,149 @@ document.addEventListener('DOMContentLoaded', () => {
         return parts[2] + '/' + parts[1] + '/' + parts[0];
     }
 
-    async function cargarFechasPacking() {
-        const inputFecha = document.getElementById('view_fecha');
-        const txtFechasConDatos = document.getElementById('view_fechas_con_datos');
-        const selEnsayo = document.getElementById('view_ensayo_nombre');
-        if (!inputFecha || !selEnsayo) return;
-        if (inputFecha.value) inputFecha.value = '';
-        selEnsayo.value = '';
-        if (txtFechasConDatos) txtFechasConDatos.textContent = '';
-        try {
-            const res = await getFechasConDatos();
-            if (res.ok && res.fechas && res.fechas.length > 0) {
-                var list = res.fechas.map(formatearFechaParaVer).join(', ');
-                if (txtFechasConDatos) txtFechasConDatos.textContent = 'Fechas con datos: ' + list;
-                if (res.fromCache) Swal.fire({ title: 'Datos guardados', text: 'Usando última data (sin conexión).', icon: 'info', timer: 2000, showConfirmButton: false });
-            } else {
-                if (txtFechasConDatos) txtFechasConDatos.textContent = res.error ? res.error : 'Sin fechas con datos.';
-                if (!res.ok && res.error) Swal.fire({ title: 'Aviso', text: res.error, icon: 'info' });
-            }
-        } catch (err) {
-            var msg = err.message || 'No se pudieron cargar las fechas.';
-            if (txtFechasConDatos) txtFechasConDatos.textContent = msg + ' En Netlify, desactiva "Prevención de seguimiento" para esta página.';
-            Swal.fire({ title: 'Error', text: msg, icon: 'error' });
+    /** Normaliza valor para asignar a un select: número sin decimal, string trim. */
+    function valorParaSelect(val) {
+        if (val === null || val === undefined || val === '') return '';
+        var s = String(val).trim();
+        if (!s) return '';
+        var n = Number(s);
+        if (!Number.isNaN(n) && Number.isInteger(n)) return String(n);
+        return s;
+    }
+
+    /** Devuelve el nombre de variedad desde VAR_MAP por id (número o string). */
+    function getNombreVariedad(id) {
+        if (id === null || id === undefined || id === '') return '';
+        var key = String(id).trim();
+        for (var casa in VAR_MAP) {
+            if (VAR_MAP[casa][key]) return VAR_MAP[casa][key];
         }
+        return key;
+    }
+
+    // Ensayo select dinámico: al cambiar la fecha, cargar ensayos con datos para esa fecha.
+    const inputFechaPacking = document.getElementById('view_fecha');
+    const selEnsayoPacking = document.getElementById('view_ensayo_numero');
+    var spinnerEnsayos = document.getElementById('spinner_ensayos');
+    var rowFechaEnsayo = document.querySelector('.packing-fecha-ensayo-row');
+    var sectionDatos = document.getElementById('packing_datos_section');
+    var msgNoEnsayos = document.getElementById('view_no_ensayos_msg');
+    if (inputFechaPacking && selEnsayoPacking) {
+        inputFechaPacking.addEventListener('change', async function () {
+            var fecha = (inputFechaPacking.value || '').trim();
+            selEnsayoPacking.innerHTML = '<option value="" disabled selected>Seleccione ensayo...</option>';
+            selEnsayoPacking.value = '';
+            if (msgNoEnsayos) msgNoEnsayos.style.display = 'none';
+            if (!fecha) {
+                selEnsayoPacking.querySelector('option').textContent = 'Seleccione fecha primero...';
+                return;
+            }
+            if (spinnerEnsayos) { spinnerEnsayos.style.display = 'inline-block'; }
+            selEnsayoPacking.disabled = true;
+            if (rowFechaEnsayo) rowFechaEnsayo.classList.add('is-loading');
+            try {
+                var res = await getEnsayosPorFecha(fecha);
+                selEnsayoPacking.innerHTML = '<option value="" disabled selected>Seleccione ensayo...</option>';
+                if (res.ok && res.ensayos && res.ensayos.length > 0) {
+                    res.ensayos.forEach(function (n) {
+                        var opt = document.createElement('option');
+                        opt.value = n;
+                        opt.textContent = 'Ensayo ' + n;
+                        selEnsayoPacking.appendChild(opt);
+                    });
+                } else {
+                    if (msgNoEnsayos) msgNoEnsayos.style.display = 'flex';
+                }
+            } catch (_) {
+                selEnsayoPacking.innerHTML = '<option value="" disabled selected>Sin conexión. Elige fecha y prueba de nuevo.</option>';
+            } finally {
+                selEnsayoPacking.disabled = false;
+                if (spinnerEnsayos) { spinnerEnsayos.style.display = 'none'; }
+                if (rowFechaEnsayo) rowFechaEnsayo.classList.remove('is-loading');
+            }
+        });
     }
 
     const btnCargarDatos = document.getElementById('btn_cargar_datos');
-    const viewEnsayosStatus = document.getElementById('view_ensayos_status');
+    var spinnerCargar = document.getElementById('spinner_cargar');
+    var btnCargarText = document.querySelector('.btn-cargar-text');
     if (btnCargarDatos) {
         btnCargarDatos.addEventListener('click', async function () {
             const fechaEl = document.getElementById('view_fecha');
-            const ensayoEl = document.getElementById('view_ensayo_nombre');
+            const ensayoEl = document.getElementById('view_ensayo_numero');
             const fecha = fechaEl && fechaEl.value ? fechaEl.value.trim() : '';
             const ensayoNumero = ensayoEl && ensayoEl.value ? ensayoEl.value.trim() : '';
             if (!fecha || !ensayoNumero) {
-                Swal.fire({ title: 'Faltan datos', text: 'Elige fecha y ensayo (1 a 4) para cargar.', icon: 'warning' });
+                Swal.fire({ title: 'Faltan datos', text: 'Elige fecha y ensayo para cargar.', icon: 'warning' });
                 return;
             }
-            if (viewEnsayosStatus) viewEnsayosStatus.textContent = 'Cargando...';
+            if (spinnerCargar) spinnerCargar.style.display = 'inline-block';
+            if (btnCargarText) btnCargarText.textContent = 'Cargando...';
+            btnCargarDatos.disabled = true;
+            if (rowFechaEnsayo) rowFechaEnsayo.classList.add('is-loading');
+            if (sectionDatos) sectionDatos.classList.add('is-loading');
             try {
                 const res = await getDatosPacking(fecha, ensayoNumero);
                 if (!res.ok || !res.data) {
-                    if (viewEnsayosStatus) viewEnsayosStatus.textContent = res.error || 'No hay registro para esa fecha y ensayo.';
                     Swal.fire({ title: 'Sin datos', text: res.error || 'No hay registro para esa fecha y ensayo.', icon: 'info' });
                     return;
                 }
                 const d = res.data;
-                const set = function (id, val) { const el = document.getElementById(id); if (el) el.value = (val != null && val !== '') ? String(val) : ''; };
-                set('view_etapa', d.TRAZ_ETAPA);
-                set('view_campo', d.TRAZ_CAMPO);
+                const set = function (id, val) {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    el.value = (val != null && val !== '') ? String(val).trim() : '';
+                };
+                            const setSelect = function (id, val) {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    const v = valorParaSelect(val);
+                    if (v && !Array.from(el.options).some(function (o) { return o.value === v; })) {
+                        var opt = document.createElement('option');
+                        opt.value = v;
+                        opt.textContent = v;
+                        el.appendChild(opt);
+                    }
+                    el.value = v;
+                };
+                setSelect('view_etapa', d.TRAZ_ETAPA);
+                setSelect('view_campo', d.TRAZ_CAMPO);
+                var elEtapa = document.getElementById('view_etapa');
+                var elCampo = document.getElementById('view_campo');
+                if (elEtapa) { elEtapa.setAttribute('data-last-value', valorParaSelect(d.TRAZ_ETAPA)); }
+                if (elCampo) { elCampo.setAttribute('data-last-value', valorParaSelect(d.TRAZ_CAMPO)); }
                 set('view_turno', d.TRAZ_LIBRE);
-                set('view_variedad', d.VARIEDAD);
                 set('view_placa', d.PLACA_VEHICULO);
                 set('view_guia_despacho', d.GUIA_REMISION);
-                set('view_rotulo', d.ENSAYO_NUMERO);
-                if (viewEnsayosStatus) viewEnsayosStatus.textContent = '';
+                var nEnsayo = d.ENSAYO_NUMERO != null && d.ENSAYO_NUMERO !== '' ? String(d.ENSAYO_NUMERO).trim() : '';
+                set('view_rotulo', nEnsayo ? nEnsayo + ' (Ensayo-' + nEnsayo + ')' : '');
+                // Variedad: número → nombre en view y auto-selección en reg_variedad
+                const variedadId = (d.VARIEDAD != null && d.VARIEDAD !== '') ? String(d.VARIEDAD).trim() : '';
+                const variedadNombre = getNombreVariedad(d.VARIEDAD);
+                const viewVar = document.getElementById('view_variedad');
+                const regVar = document.getElementById('reg_variedad');
+                if (viewVar) viewVar.value = variedadNombre;
+                if (regVar) regVar.value = variedadId;
                 Swal.fire({ title: res.fromCache ? 'Datos cargados (caché)' : 'Datos cargados', icon: 'success', timer: 1500, showConfirmButton: false });
             } catch (err) {
-                if (viewEnsayosStatus) viewEnsayosStatus.textContent = err.message || 'Error al cargar.';
                 Swal.fire({ title: 'Error', text: err.message || 'No se pudo cargar.', icon: 'error' });
+            } finally {
+                if (spinnerCargar) spinnerCargar.style.display = 'none';
+                if (btnCargarText) btnCargarText.textContent = 'Cargar datos';
+                btnCargarDatos.disabled = false;
+                if (rowFechaEnsayo) rowFechaEnsayo.classList.remove('is-loading');
+                if (sectionDatos) sectionDatos.classList.remove('is-loading');
             }
         });
     }
+
+    // Etapa/Campo solo lectura: revertir si el usuario intenta cambiar
+    (function () {
+        var vEtapa = document.getElementById('view_etapa');
+        var vCampo = document.getElementById('view_campo');
+        if (vEtapa) vEtapa.addEventListener('change', function () { var v = this.getAttribute('data-last-value'); if (v !== null && v !== '') this.value = v; });
+        if (vCampo) vCampo.addEventListener('change', function () { var v = this.getAttribute('data-last-value'); if (v !== null && v !== '') this.value = v; });
+    })();
 
     // Sincronizar vista al cargar (visual por defecto si no es packing)
     (function syncVistaInicial() {
@@ -506,7 +691,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (viewVisualContainer) viewVisualContainer.style.display = 'none';
             if (viewPackingContainer) viewPackingContainer.style.display = 'block';
             if (btnGuardarRegistro) btnGuardarRegistro.style.display = 'none';
-            cargarFechasPacking();
+            if (inputFechaPacking && inputFechaPacking.value) inputFechaPacking.dispatchEvent(new Event('change'));
         } else {
             if (viewVisualContainer) viewVisualContainer.style.display = 'block';
             if (viewPackingContainer) viewPackingContainer.style.display = 'none';
@@ -2103,19 +2288,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnGuardarGeneral) {
         let isSaving = false;
+        let lastSaveAt = 0;
+        const COOLDOWN_MS = 3000;
+        const guardarText = btnGuardarGeneral.querySelector('.btn-guardar-text');
+        const guardarSpinner = document.getElementById('spinner_guardar');
         const toggleSaving = (saving) => {
             isSaving = saving;
             btnGuardarGeneral.disabled = saving;
-            btnGuardarGeneral.style.opacity = saving ? '0.5' : '1';
+            btnGuardarGeneral.style.opacity = saving ? '0.7' : '1';
+            if (guardarText) guardarText.textContent = saving ? 'Guardando...' : 'GUARDAR REGISTRO';
+            if (guardarSpinner) guardarSpinner.style.display = saving ? 'inline-block' : 'none';
         };
 
-        btnGuardarGeneral.addEventListener('click', () => {
+        btnGuardarGeneral.addEventListener('click', async () => {
             if (isSaving) return;
+            if (Date.now() - lastSaveAt < COOLDOWN_MS) return;
+            toggleSaving(true);
 
             const form = document.getElementById('cosecha-form');
             
             if (!form.checkValidity()) {
                 form.reportValidity();
+                toggleSaving(false);
                 return;
             }
 
@@ -2127,6 +2321,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     icon: 'warning',
                     confirmButtonColor: '#2f7cc0'
                 });
+                toggleSaving(false);
                 return;
             }
 
@@ -2138,6 +2333,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     icon: 'warning',
                     confirmButtonColor: '#2f7cc0'
                 });
+                toggleSaving(false);
                 return;
             }
 
@@ -2158,6 +2354,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     icon: 'warning',
                     confirmButtonColor: '#2f7cc0'
                 });
+                toggleSaving(false);
                 return;
             }
 
@@ -2179,16 +2376,68 @@ document.addEventListener('DOMContentLoaded', () => {
                                 icon: 'error',
                                 confirmButtonColor: '#d33'
                             });
+                            toggleSaving(false);
                             return;
                         }
                     }
                 }
             }
 
-            // Construir filas planas de 50 columnas para Excel (sin TEMP_AMB)
+            // Antes de registrar (solo con internet): comprobar qué ensayos ya existen; si algunos sí y otros no, ofrecer registrar solo los no registrados
+            const fechaReg = (document.getElementById('reg_fecha') && document.getElementById('reg_fecha').value) ? document.getElementById('reg_fecha').value.trim() : '';
+            const ensayosConDatos = [];
+            for (let numEnsayo in datosDelTipo) {
+                if (datosDelTipo[numEnsayo].visual && datosDelTipo[numEnsayo].visual.length > 0) ensayosConDatos.push(numEnsayo);
+            }
+            let ensayosAIncluir = ensayosConDatos.slice();
+            if (fechaReg && ensayosConDatos.length > 0 && navigator.onLine) {
+                const ensayosQueExisten = [];
+                const ensayosQueNoExisten = [];
+                for (const numEnsayo of ensayosConDatos) {
+                    try {
+                        const resExiste = await existeRegistroFechaEnsayo(fechaReg, numEnsayo);
+                        if (resExiste.ok && resExiste.existe) ensayosQueExisten.push(resExiste.ensayo_numero || numEnsayo);
+                        else ensayosQueNoExisten.push(numEnsayo);
+                    } catch (_) {
+                        ensayosQueNoExisten.push(numEnsayo);
+                    }
+                }
+                if (ensayosQueExisten.length > 0) {
+                    if (ensayosQueNoExisten.length === 0) {
+                        Swal.fire({
+                            title: 'Ya registrados',
+                            html: 'Todos los ensayos con datos ya están registrados para esta fecha.<br>No hay nada nuevo que guardar.',
+                            icon: 'info',
+                            confirmButtonColor: '#2f7cc0'
+                        });
+                        toggleSaving(false);
+                        return;
+                    }
+                    const textoExisten = ensayosQueExisten.map(n => 'Ensayo ' + n).join(', ');
+                    const textoNoExisten = ensayosQueNoExisten.map(n => 'Ensayo ' + n).join(' y ');
+                    const result = await Swal.fire({
+                        title: 'Algunos ya están registrados',
+                        html: '<strong>' + textoExisten + '</strong> ya está(n) registrado(s) para esta fecha.<br><br>¿Deseas que registremos solo <strong>' + textoNoExisten + '</strong>?',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#2f7cc0',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Sí, registrar solo los no registrados',
+                        cancelButtonText: 'Cancelar'
+                    });
+                    if (!result.isConfirmed) {
+                        toggleSaving(false);
+                        return;
+                    }
+                    ensayosAIncluir = ensayosQueNoExisten;
+                }
+            }
+
+            // Construir filas planas de 50 columnas para Excel (solo para ensayos a incluir)
             const allRows = [];
             
-            for (let numEnsayo in datosDelTipo) {
+            for (let numEnsayo of ensayosAIncluir) {
+                if (!datosDelTipo[numEnsayo]) continue;
                 const ensayo = datosDelTipo[numEnsayo];
                 
                 if (ensayo.visual && ensayo.visual.length > 0) {
@@ -2345,25 +2594,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            toggleSaving(true);
-            saveLocal({ rows: allRows });
-            updateUI();
-            window.formHasChanges = false;
-            if (typeof renderHistorial === 'function') renderHistorial();
+            try {
+                lastSaveAt = Date.now();
+                saveLocal({ rows: allRows });
+                updateUI();
+                window.formHasChanges = false;
+                if (typeof renderHistorial === 'function') renderHistorial(false);
 
-            Swal.fire({
-                title: '¡Registro Guardado!',
-                html: 'Los datos se han guardado correctamente.<br><small>Se enviarán al servidor cuando haya conexión.</small>',
-                icon: 'success',
-                confirmButtonColor: '#2f7cc0',
-                confirmButtonText: 'Entendido'
-            }).then(() => {
-                document.getElementById('cosecha-form').reset();
-                if (campoFecha) campoFecha.value = new Date().toISOString().split('T')[0];
-                window.location.reload();
-            }).finally(() => {
+                Swal.fire({
+                    title: '¡Registro Guardado!',
+                    html: 'Los datos se han guardado correctamente.<br><small>Se enviarán al servidor cuando haya conexión.</small>',
+                    icon: 'success',
+                    confirmButtonColor: '#2f7cc0',
+                    confirmButtonText: 'Entendido'
+                }).then(() => {
+                    document.getElementById('cosecha-form').reset();
+                    if (campoFecha) campoFecha.value = fechaLocalHoy();
+                    window.location.reload();
+                }).finally(() => {
+                    toggleSaving(false);
+                });
+            } catch (err) {
                 toggleSaving(false);
-            });
+                console.error(err);
+                Swal.fire({ title: 'Error', text: 'No se pudo guardar. Revisa la consola.', icon: 'error', confirmButtonColor: '#d33' });
+            }
         });
     }
 });

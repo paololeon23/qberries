@@ -8,7 +8,7 @@ let retryTimeoutId = null;
 // Actualiza el Card de Conexión y el contador de pendientes; si hay señal, intenta sincronizar
 export function updateUI() {
     const items = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    const pendingCount = items.filter(i => i.status !== 'subido').length;
+    const pendingCount = items.filter(i => i.status === 'pendiente').length;
     const countText = document.getElementById("pending-count");
     const statusText = document.getElementById("status-text");
     const statusCard = document.getElementById("network-status-container");
@@ -34,7 +34,7 @@ export function updateUI() {
 function programarReintentoSiHayPendientes() {
     cancelarReintentos();
     const items = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    const pending = items.filter(i => i.status !== 'subido').length;
+    const pending = items.filter(i => i.status === 'pendiente').length;
     if (pending === 0 || !navigator.onLine) return;
     retryTimeoutId = setTimeout(() => {
         if (navigator.onLine) updateUI();
@@ -76,12 +76,15 @@ async function sendToCloud(d) {
     });
 }
 
-// Sincronización: un registro a la vez. Si falla la red, no se muestra error; se reintenta al volver la señal.
+// Mensaje estándar cuando un registro no se sube por duplicado
+const RECHAZO_DUPLICADO_MSG = "No se subió porque ya estaba registrado este ensayo para esta fecha.";
+
+// Sincronización: un registro a la vez. Antes de enviar, comprueba por fila si ya existe (fecha+ensayo); rechazados se marcan y no se reenvían.
 async function sync() {
     if (isSyncing || !navigator.onLine) return;
 
     const items = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    const pendingItems = items.filter(i => i.status !== 'subido');
+    const pendingItems = items.filter(i => i.status === 'pendiente');
     if (pendingItems.length === 0) return;
 
     isSyncing = true;
@@ -89,7 +92,67 @@ async function sync() {
 
     for (let i = 0; i < queue.length; i++) {
         const item = queue[i];
+        const rows = item.rows || [];
+        if (rows.length === 0) continue;
+
+        const rowsToSend = [];
+        const rowsRejected = [];
+        for (const row of rows) {
+            const fecha = row[0];
+            const ensayoNum = row[10];
+            if (fecha == null || String(fecha).trim() === '') {
+                rowsToSend.push(row);
+                continue;
+            }
+            try {
+                const { existe } = await existeRegistroFechaEnsayo(String(fecha).trim(), ensayoNum);
+                if (existe) rowsRejected.push(row);
+                else rowsToSend.push(row);
+            } catch (_) {
+                rowsToSend.push(row);
+            }
+        }
+
         try {
+            if (rowsRejected.length === rows.length) {
+                // Todo duplicado: marcar ítem como rechazado (una “entrada” por fila para que el historial muestre cada ensayo)
+                let currentItems = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+                currentItems = currentItems.filter(it => it.uid !== item.uid);
+                rowsRejected.forEach(row => {
+                    currentItems.push({
+                        uid: 'REG-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+                        timestamp: item.timestamp || new Date().toLocaleString(),
+                        rows: [row],
+                        status: 'rechazado_duplicado',
+                        rechazoMotivo: RECHAZO_DUPLICADO_MSG
+                    });
+                });
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(currentItems));
+                updateUI();
+                await new Promise(r => setTimeout(r, 800));
+                continue;
+            }
+
+            if (rowsRejected.length > 0 && rowsToSend.length > 0) {
+                await sendToCloud({ ...item, rows: rowsToSend });
+                let currentItems = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+                currentItems = currentItems.filter(it => it.uid !== item.uid);
+                currentItems.push({ ...item, rows: rowsToSend, status: 'subido' });
+                rowsRejected.forEach(row => {
+                    currentItems.push({
+                        uid: 'REG-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+                        timestamp: item.timestamp || new Date().toLocaleString(),
+                        rows: [row],
+                        status: 'rechazado_duplicado',
+                        rechazoMotivo: RECHAZO_DUPLICADO_MSG
+                    });
+                });
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(currentItems));
+                updateUI();
+                await new Promise(r => setTimeout(r, 2500));
+                continue;
+            }
+
             await sendToCloud(item);
             let currentItems = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
             currentItems = currentItems.map(it =>
@@ -99,8 +162,6 @@ async function sync() {
             updateUI();
             await new Promise(r => setTimeout(r, 2500));
         } catch (_e) {
-            // Conexión falló (ERR_CONNECTION_RESET, etc.). No mostrar error; los datos siguen en cola.
-            // Se reintentará al volver la señal (online) o con el temporizador.
             break;
         }
     }
@@ -110,6 +171,8 @@ async function sync() {
 
 const MSJ_SIN_CONEXION = "Sin conexión. Conéctate para cargar datos.";
 const PACKING_CACHE_KEY = "tiempos_packing_cache_v1";
+const LISTADO_REGISTRADOS_KEY = "tiempos_listado_registrados_v1";
+const LISTADO_REGISTRADOS_TTL_MS = 2 * 60 * 1000; // 2 min
 
 function getPackingCache() {
     try {
@@ -154,9 +217,9 @@ function fetchGetJsonp(url) {
 
         const timer = setTimeout(() => {
             cleanup();
-            console.warn('[GET Timeout] No hubo respuesta en 15 s.');
+            console.warn('[GET Timeout] No hubo respuesta en 10 s.');
             reject(new Error(MSJ_SIN_CONEXION));
-        }, 15000);
+        }, 10000);
 
         const script = document.createElement('script');
         script.onerror = () => {
@@ -225,6 +288,50 @@ export async function getEnsayosPorFecha(fecha) {
         }
         console.warn('[getEnsayosPorFecha] Error:', e && e.message);
         return { ok: false, ensayos: [], error: e && e.message ? e.message : MSJ_SIN_CONEXION };
+    }
+}
+
+/** GET: listado de todos los (fecha, ensayo_numero, ensayo_nombre) registrados en el servidor. Con cache 2 min. */
+export async function getListadoRegistrados() {
+    try {
+        const raw = localStorage.getItem(LISTADO_REGISTRADOS_KEY);
+        if (raw) {
+            const { registrados, ts } = JSON.parse(raw);
+            if (Array.isArray(registrados) && (Date.now() - (ts || 0)) < LISTADO_REGISTRADOS_TTL_MS)
+                return { ok: true, registrados, fromCache: true };
+        }
+        const url = API_URL + "?listado_registrados=1";
+        const out = await fetchGetJsonp(url);
+        if (out.ok && Array.isArray(out.registrados)) {
+            localStorage.setItem(LISTADO_REGISTRADOS_KEY, JSON.stringify({ registrados: out.registrados, ts: Date.now() }));
+            return { ok: true, registrados: out.registrados };
+        }
+        if (raw) {
+            const { registrados } = JSON.parse(raw);
+            if (Array.isArray(registrados)) return { ok: true, registrados, fromCache: true };
+        }
+        return { ok: false, registrados: [], error: out.error || "No se pudo cargar el listado." };
+    } catch (e) {
+        const raw = localStorage.getItem(LISTADO_REGISTRADOS_KEY);
+        if (raw) {
+            try {
+                const { registrados } = JSON.parse(raw);
+                if (Array.isArray(registrados)) return { ok: true, registrados, fromCache: true };
+            } catch (_) {}
+        }
+        return { ok: false, registrados: [], error: e && e.message ? e.message : MSJ_SIN_CONEXION };
+    }
+}
+
+/** GET: comprobar si ya existe un registro para esta fecha + ensayo_numero (evitar duplicados). Devuelve { ok, existe } */
+export async function existeRegistroFechaEnsayo(fecha, ensayoNumero) {
+    try {
+        const url = API_URL + "?existe_registro=1&fecha=" + encodeURIComponent(fecha) + "&ensayo_numero=" + encodeURIComponent(String(ensayoNumero));
+        const out = await fetchGetJsonp(url);
+        return { ok: out.ok === true, existe: out.existe === true, ensayo_numero: out.ensayo_numero };
+    } catch (e) {
+        console.warn('[existeRegistroFechaEnsayo] Error:', e && e.message);
+        return { ok: false, existe: false };
     }
 }
 

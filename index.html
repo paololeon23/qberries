@@ -45,7 +45,7 @@
         
         <form id="cosecha-form">
 
-            <div class="form-group main-card form-inline">
+            <div class="form-group form-inline main-card">
                 <label for="tipo_medicion">
                     <i data-lucide="layers"></i> Tipo de Medición:
                 </label>
@@ -138,7 +138,7 @@
 
             <hr>
 
-            <div class="form-group main-card form-inline">
+            <div class="form-group form-inline main-card">
                 <label for="tipo_medicion">
                     <i data-lucide="layers"></i> Rótulo de Muestra:
                 </label>
@@ -549,75 +549,105 @@
 </div>
             </div>
 
-            <div id="view_packing_container" class="form-group" style="display: none;">
-                <div class="main-card" style="margin-bottom: 1rem;">
-                    <div class="row">
-                        <div class="col">
+            <div id="view_packing_container" class="packing-container" style="display: none;">
+                <!-- Bloque 1: Fecha, Ensayo, Cargar datos -->
+                <div class="form-group packing-fecha-ensayo-row" style="margin-bottom: 1rem;">
+                    <div class="row row-fecha-ensayo">
+                        <div class="col col-fecha">
                             <label><i data-lucide="calendar"></i> Fecha</label>
                             <input type="date" id="view_fecha" name="view_fecha">
-                            <p id="view_fechas_con_datos" class="fechas-con-datos" aria-live="polite"></p>
                         </div>
-                        <div class="col">
+                        <div class="col col-ensayo">
                             <label><i data-lucide="layers"></i> Ensayo</label>
-                            <select id="view_ensayo_nombre" name="view_ensayo_numero" class="select-modern">
-                                <option value="" disabled selected>Seleccione ensayo...</option>
-                                <option value="1">Ensayo 1</option>
-                                <option value="2">Ensayo 2</option>
-                                <option value="3">Ensayo 3</option>
-                                <option value="4">Ensayo 4</option>
-                            </select>
-                            <p id="view_ensayos_status" class="fechas-con-datos" aria-live="polite"></p>
+                            <div class="ensayo-select-wrap">
+                                <select id="view_ensayo_numero" name="view_ensayo_numero" class="select-modern">
+                                    <option value="" disabled selected>Seleccione fecha primero...</option>
+                                </select>
+                                <span id="spinner_ensayos" class="loading-spinner" aria-hidden="true" style="display: none;"></span>
+                            </div>
                         </div>
-                        <div class="col" style="display: flex; align-items: flex-end;">
-                            <button type="button" id="btn_cargar_datos" class="btn-primary-blue" style="padding: 8px 16px;">Cargar datos</button>
-                        </div>
+
                     </div>
+                                            <div class="col col-btn-cargar" style="display: flex; align-items: flex-end;">
+                            <button type="button" id="btn_cargar_datos" class="btn-primary-blue btn-cargar-datos" style="padding: 8px 16px;">
+                                <span class="btn-cargar-text">Cargar datos</span>
+                                <span id="spinner_cargar" class="loading-spinner btn-spinner" aria-hidden="true" style="display: none;"></span>
+                            </button>
+                        </div>
+                    <p id="view_no_ensayos_msg" class="view-only-hint view-no-ensayos-msg" style="display: none; margin: 10px 0 0 0; font-size: 0.85rem; color: #b45309;" role="status" aria-live="polite"><i data-lucide="alert-circle"></i> No hay ensayos en esa fecha. Busca otra fecha por favor.</p>
                 </div>
 
-                <section class="form-group main-card">
+                <!-- Bloque 2: Datos de la hoja (solo visualización) -->
+                <section id="packing_datos_section" class="form-group datos-cargados-solo-lectura">
+                    <p class="view-only-hint" style="margin: 0 0 12px 0; font-size: 0.85rem; color: #555;"><i data-lucide="info"></i> Datos de la hoja: solo visualización. Se usarán al agregar registros en Packing.</p>
                     <div class="row">
                         <div class="col">
                             <label><i data-lucide="clock"></i> Hora Inicio Recepción</label>
                             <input type="time" id="view_hora_recepcion" name="view_hora_recepcion">
                         </div>
                         <div class="col">
-                            <label><i data-lucide="tag"></i> Rótulo Muestra</label>
-                            <input type="text" id="view_rotulo" name="view_rotulo" placeholder="E01" style="text-transform: uppercase;">
+                            <label class="view-only-label"><i data-lucide="tag"></i> Ensayos</label>
+                            <input type="text" id="view_rotulo" name="view_rotulo" class="view-only" readonly placeholder="1 (Ensayo-1)" title="Solo lectura">
                         </div>
                     </div>
                     <div class="row">
                         <div class="col">
-                            <label><i data-lucide="map-pin"></i> Ubicación (Etapa / Campo / Turno)</label>
+                            <label class="view-only-label"><i data-lucide="map-pin"></i> Ubicación (Etapa / Campo / Turno)</label>
                             <div class="input-group-triple">
-                                <select id="view_etapa" name="view_etapa">
+                                <select id="view_etapa" name="view_etapa" class="view-only" tabindex="-1" title="Solo lectura" aria-readonly="true">
                                     <option value="" disabled selected>Etapa</option>
                                     <option value="1">1</option>
                                     <option value="2">2</option>
                                     <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                    <option value="6">6</option>
+                                    <option value="7">7</option>
+                                    <option value="8">8</option>
+                                    <option value="9">9</option>
+                                    <option value="10">10</option>
+                                    <option value="11">11</option>
+                                    <option value="12">12</option>
+                                    <option value="13">13</option>
+                                    <option value="14">14</option>
+                                    <option value="15">15</option>
                                 </select>
-                                <select id="view_campo" name="view_campo">
+                                <select id="view_campo" name="view_campo" class="view-only" tabindex="-1" title="Solo lectura" aria-readonly="true">
                                     <option value="" disabled selected>Campo</option>
                                     <option value="1">1</option>
                                     <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                    <option value="6">6</option>
+                                    <option value="7">7</option>
+                                    <option value="8">8</option>
+                                    <option value="9">9</option>
+                                    <option value="10">10</option>
+                                    <option value="11">11</option>
+                                    <option value="12">12</option>
+                                    <option value="13">13</option>
+                                    <option value="14">14</option>
+                                    <option value="15">15</option>
                                 </select>
-                                <input type="text" id="view_turno" name="view_turno" placeholder="Turno" maxlength="2">
+                                <input type="text" id="view_turno" name="view_turno" class="view-only" readonly placeholder="Turno" maxlength="2" title="Solo lectura">
                             </div>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col">
-                            <label><i data-lucide="leaf"></i> Variedad</label>
-                            <input type="text" id="view_variedad" name="view_variedad" placeholder="VENTURA" style="text-transform: uppercase;">
+                            <label class="view-only-label"><i data-lucide="leaf"></i> Variedad</label>
+                            <input type="text" id="view_variedad" name="view_variedad" class="view-only" readonly placeholder="VENTURA" style="text-transform: uppercase;" title="Solo lectura">
                         </div>
                         <div class="col">
-                            <label><i data-lucide="truck"></i> N° Placa Camioneta</label>
-                            <input type="text" id="view_placa" name="view_placa" placeholder="M81-787" style="text-transform: uppercase;">
+                            <label class="view-only-label"><i data-lucide="truck"></i> N° Placa Camioneta</label>
+                            <input type="text" id="view_placa" name="view_placa" class="view-only" readonly placeholder="M81-787" style="text-transform: uppercase;" title="Solo lectura">
                         </div>
                     </div>
                     <div class="row">
                         <div class="col">
-                            <label><i data-lucide="file-text"></i> N° Guía Despacho</label>
-                            <input type="text" id="view_guia_despacho" name="view_guia_despacho" placeholder="---" inputmode="numeric">
+                            <label class="view-only-label"><i data-lucide="file-text"></i> N° Guía Despacho</label>
+                            <input type="text" id="view_guia_despacho" name="view_guia_despacho" class="view-only" readonly placeholder="---" inputmode="numeric" title="Solo lectura">
                         </div>
                         <div class="col">
                             <label><i data-lucide="navigation"></i> N° Viaje</label>
@@ -626,6 +656,7 @@
                     </div>
                 </section>
 
+                <!-- Bloque 3: Wrappers Packing -->
                 <div id="wrapper_packing_1" class="collapsible-wrapper">
                     <div class="collapsible-card">
                         <div class="card-header collapsible-toggle" data-target="body-packing-1">
@@ -700,19 +731,29 @@
                 </div>
             </div>
 
-        <button type="button" id="btn-guardar-registro" class="btn-primary-blue">
-            GUARDAR REGISTRO
+        <button type="button" id="btn-guardar-registro" class="btn-primary-blue btn-guardar-registro">
+            <span class="btn-guardar-text">GUARDAR REGISTRO</span>
+            <span id="spinner_guardar" class="loading-spinner btn-spinner" aria-hidden="true" style="display: none;"></span>
         </button>
 
         </form>
 
         <!-- Vista Historial (se muestra al hacer clic en menú Historial) -->
         <section id="view-historial" style="display: none; margin-top: 20px;">
-            <div class="form-group main-card">
-                <h2 style="margin-top: 0; margin-bottom: 10px;">Historial de registros</h2>
+            <div class="form-group">
+                <div class="historial-header-row">
+                    <h2 style="margin: 0 0 10px 0;">Historial de registros</h2>
+                    <button type="button" id="historial-btn-refresh" class="btn-historial-refresh" title="Actualizar listado y envíos"><i data-lucide="refresh-cw"></i> Actualizar</button>
+                </div>
                 <p style="margin-top: 0; color: #555; font-size: 0.9rem;">
-                    Resumen por día y ensayo. El estado se basa en si el registro aún está en cola (Pendiente) o ya fue enviado (Subido).
+                    Resumen por día y ensayo. <strong>Pendiente:</strong> en cola, se enviará al tener conexión. <strong>Subido:</strong> ya enviado. <strong>No subido (ya registrado):</strong> no se subió porque ese ensayo ya estaba registrado para esa fecha. Toca una fila para ver el detalle.
                 </p>
+                <div id="historial-servidor-wrap" class="historial-servidor-wrap">
+                    <h3 style="margin: 0 0 6px 0; font-size: 1rem;">Registros en el servidor (por fecha)</h3>
+                    <p style="margin: 0 0 8px 0; color: #666; font-size: 0.85rem;">Qué ensayos están ya guardados; así puedes evitar duplicados.</p>
+                    <div id="historial-servidor" class="historial-servidor"></div>
+                </div>
+                <h3 style="margin-top: 20px; margin-bottom: 8px; font-size: 1rem;">Tus envíos (estado)</h3>
                 <div id="historial-list" class="historial-list">
                     <!-- Contenido generado por script.js -->
                 </div>
@@ -722,7 +763,7 @@
         <!-- Recomendaciones -->
         <!-- ==================== RECOMENDACIONES ==================== -->
     <section id="view-recomendaciones" style="display: none; margin-top: 20px;">
-        <div class="form-group main-card">
+        <div class="form-group">
         <div class="section-header">
             <h2><i data-lucide="info"></i> Recomendaciones de Uso</h2>
         </div>

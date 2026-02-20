@@ -79,44 +79,70 @@ function doPost(e) {
       return row.slice(0, NUM_COLS).map(normalizarParaClave).join("||");
     }
 
+    // Clave FECHA + ENSAYO_NUMERO: no insertar si ya existe un registro con la misma combinación
+    function keyFechaEnsayo(row) {
+      var f = normalizarParaClave(row[0]);
+      var eRaw = row[10];
+      var e = "";
+      if (eRaw !== null && eRaw !== undefined && eRaw !== "") {
+        var num = Number(eRaw);
+        e = (!isNaN(num) && num === Math.floor(num)) ? String(num) : normalizarParaClave(eRaw);
+      }
+      return (f && e) ? f + "|" + e : "";
+    }
+
     var lastRow = sheet.getLastRow();
     var existingKeys = {};
+    var existingFechaEnsayo = {};
     if (lastRow >= 2) {
-      var numDataRows = lastRow - 1;
-      var existingValues = sheet.getRange(2, 1, numDataRows, NUM_COLS).getValues();
+      // Leer todas las filas de datos (2 hasta lastRow inclusive)
+      var existingValues = sheet.getRange(2, 1, lastRow, NUM_COLS).getValues();
       existingValues.forEach(function(r) {
         var key = buildKey(r);
         if (key) existingKeys[key] = true;
+        var kfe = keyFechaEnsayo(r);
+        if (kfe) existingFechaEnsayo[kfe] = true;
       });
     }
 
     var nuevasFilas = [];
+    var skippedFechaEnsayo = 0;
     rows.forEach(function(row) {
       while (row.length < NUM_COLS) row.push("");
       var fila = row.slice(0, NUM_COLS);
       var key = buildKey(fila);
-      if (!existingKeys[key]) {
-        nuevasFilas.push(fila);
-        existingKeys[key] = true;
+      var kfe = keyFechaEnsayo(fila);
+      if (existingKeys[key]) return;
+      if (kfe && existingFechaEnsayo[kfe]) {
+        skippedFechaEnsayo++;
+        return;
       }
+      nuevasFilas.push(fila);
+      existingKeys[key] = true;
+      if (kfe) existingFechaEnsayo[kfe] = true;
     });
 
     // Re-leer la hoja justo antes de escribir (por si otro request escribió mientras esperaba el lock)
     lastRow = sheet.getLastRow();
     existingKeys = {};
+    existingFechaEnsayo = {};
     if (lastRow >= 2) {
-      var numDataRows2 = lastRow - 1;
-      existingValues = sheet.getRange(2, 1, numDataRows2, NUM_COLS).getValues();
+      existingValues = sheet.getRange(2, 1, lastRow, NUM_COLS).getValues();
       existingValues.forEach(function(r) {
         var key = buildKey(r);
         if (key) existingKeys[key] = true;
+        var kfe = keyFechaEnsayo(r);
+        if (kfe) existingFechaEnsayo[kfe] = true;
       });
       var filtradas = [];
       nuevasFilas.forEach(function(fila) {
-        if (!existingKeys[buildKey(fila)]) {
-          filtradas.push(fila);
-          existingKeys[buildKey(fila)] = true;
-        }
+        var key = buildKey(fila);
+        var kfe = keyFechaEnsayo(fila);
+        if (existingKeys[key]) return;
+        if (kfe && existingFechaEnsayo[kfe]) return;
+        filtradas.push(fila);
+        existingKeys[key] = true;
+        if (kfe) existingFechaEnsayo[kfe] = true;
       });
       nuevasFilas = filtradas;
     }
@@ -127,6 +153,24 @@ function doPost(e) {
       sheet.getRange(startRow, 1, numRows, NUM_COLS).setValues(nuevasFilas);
     }
 
+    // Si no se insertó nada porque ya existía esa fecha + ensayo, devolver error para que la app muestre el mensaje
+    if (nuevasFilas.length === 0 && rows.length > 0) {
+      var ensayoMsg = "";
+      try {
+        var firstRow = rows[0];
+        var en = firstRow[10];
+        if (en !== null && en !== undefined && en !== "") {
+          var n = Number(en);
+          ensayoMsg = (!isNaN(n) && n === Math.floor(n)) ? String(n) : String(en).trim();
+        }
+      } catch (err) {}
+      return ContentService.createTextOutput(JSON.stringify({
+        ok: false,
+        error: "Ya se registró ensayo " + (ensayoMsg || "?") + ". Registra otro ensayo por favor.",
+        duplicate: true
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     if (uid) {
       PropertiesService.getScriptProperties().setProperty("mtpp_uid_" + uid, "1");
       limpiarUidsAntiguos();
@@ -135,7 +179,8 @@ function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify({
       ok: true,
       received: rows.length,
-      inserted: nuevasFilas.length
+      inserted: nuevasFilas.length,
+      skippedDuplicateFechaEnsayo: skippedFechaEnsayo
     })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {
@@ -232,6 +277,28 @@ function doGet(e) {
       return s;
     }
 
+    // 0) Listado de todos los registros (fecha + ensayo) para historial y prevención — una petición, respuesta ligera
+    var listadoReg = (params.listado_registrados || '').toString().trim() === '1';
+    if (listadoReg) {
+      var seen = {};
+      var registrados = [];
+      for (var i = 0; i < data.length; i++) {
+        var r = data[i];
+        var f = formatFecha(r[0]);
+        var en = r[10];
+        var enStr = (en !== null && en !== undefined && en !== '') ? (Number(en) === Math.floor(Number(en)) ? String(Number(en)) : String(en).trim()) : '';
+        var nom = (r[11] != null && r[11] !== undefined && r[11] !== '') ? String(r[11]).trim() : ('Ensayo ' + enStr);
+        if (!f || enStr === '') continue;
+        var key = f + '|' + enStr;
+        if (seen[key]) continue;
+        seen[key] = true;
+        registrados.push({ fecha: f, ensayo_numero: enStr, ensayo_nombre: nom });
+      }
+      result.ok = true;
+      result.registrados = registrados;
+      return returnOutput(result);
+    }
+
     // 1) Listar fechas con datos (sin fecha ni ensayo_numero)
     if (!fecha && !ensayoNumero) {
       var fechasSet = {};
@@ -261,7 +328,30 @@ function doGet(e) {
       return returnOutput(result);
     }
 
-    // 3) Obtener fila por fecha + ensayo_numero (columna K = número 1, 2, 3, 4)
+    // 3) Comprobar si ya existe registro para esta fecha + ensayo_numero (para evitar duplicados desde la app)
+    var existeRegistro = (params.existe_registro || '').toString().trim() === '1';
+    if (existeRegistro && fecha && ensayoNumero) {
+      var enNorm = ensayoNumero;
+      var numEn = Number(ensayoNumero);
+      if (!isNaN(numEn) && numEn === Math.floor(numEn)) enNorm = String(numEn);
+      for (var i = 0; i < data.length; i++) {
+        var r = data[i];
+        var rowFechaStr = formatFecha(r[0]);
+        var rowEn = r[10];
+        var rowEnStr = (rowEn !== null && rowEn !== undefined) ? (Number(rowEn) === Math.floor(Number(rowEn)) ? String(Number(rowEn)) : String(rowEn).trim()) : '';
+        if (rowFechaStr === fecha && rowEnStr === enNorm) {
+          result.ok = true;
+          result.existe = true;
+          result.ensayo_numero = enNorm;
+          return returnOutput(result);
+        }
+      }
+      result.ok = true;
+      result.existe = false;
+      return returnOutput(result);
+    }
+
+    // 4) Obtener fila por fecha + ensayo_numero (columna K = número 1, 2, 3, 4)
     if (!fecha || !ensayoNumero) {
       result.error = 'Faltan parámetros: fecha y ensayo_numero';
       return returnOutput(result);
