@@ -136,6 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (campoFecha) {
         campoFecha.value = fechaLocalHoy();
     }
+    // Horas de jarras y tiempos quedan libres (sin rellenar con hora actual)
 
     // --- Formulario: sin submit tradicional (todo por JS) ---
     if (cosechaForm) {
@@ -213,15 +214,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const ensayosMap = {};
             itemsDeDia.forEach(item => {
                 const estado = item.status === 'subido' ? 'subido' : (item.status === 'rechazado_duplicado' ? 'rechazado_duplicado' : 'pendiente');
+                const horaSubida = item.subidoAt || (item.timestamp ? (function () { var d = new Date(item.timestamp); return isNaN(d.getTime()) ? item.timestamp : d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); })() : '');
                 (item.rows || []).forEach(row => {
                     const ensayoNum = row[12];
                     const ensayoNom = row[13] || ('Ensayo ' + ensayoNum);
                     const clave = `${ensayoNum}|${ensayoNom}`;
                     if (!ensayosMap[clave]) {
-                        ensayosMap[clave] = { ensayoNum, ensayoNom, totalClamshells: 0, estados: new Set(), rechazoMotivo: null };
+                        ensayosMap[clave] = { ensayoNum, ensayoNom, totalClamshells: 0, estados: new Set(), rechazoMotivo: null, horaSubida: '' };
                     }
                     ensayosMap[clave].totalClamshells += 1;
                     ensayosMap[clave].estados.add(estado);
+                    if (estado === 'subido' && horaSubida) ensayosMap[clave].horaSubida = horaSubida;
                     if (item.status === 'rechazado_duplicado' && item.rechazoMotivo)
                         ensayosMap[clave].rechazoMotivo = item.rechazoMotivo;
                 });
@@ -239,7 +242,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     clamshells: info.totalClamshells,
                     estado: textoEstado,
                     claseEstado,
-                    detalleMsg
+                    detalleMsg,
+                    horaSubida: info.horaSubida || '—'
                 });
             });
         });
@@ -258,6 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <th>Ensayo</th>
                     <th>Clamshells</th>
                     <th>Estado</th>
+                    <th>Hora subida</th>
                     <th>Acción</th>
                 </tr>
             </thead>`;
@@ -268,6 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${f.ensayo}</td>
                 <td>${f.clamshells}</td>
                 <td><span class="hist-status-badge ${f.claseEstado}">${f.estado}</span></td>
+                <td>${f.horaSubida || '—'}</td>
                 <td class="historial-cell-accion"><button type="button" class="btn-eliminar-envio" title="Quitar de la lista">Eliminar</button></td>
             </tr>
         `).join('') + '</tbody>';
@@ -452,22 +458,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (selectMedicion) {
         selectMedicion.addEventListener('change', async function() {
             const newTipo = this.value;
-            if (tieneDatosSinGuardar()) {
-                const result = await Swal.fire({
-                    title: '¿Descartar datos?',
-                    text: 'Tienes datos en la fila actual sin haber pulsado "Añadir". ¿Seguro que no quieres guardar esta fila?',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, descartar',
-                    cancelButtonText: 'No, quedarme',
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6'
-                });
-                if (!result.isConfirmed) {
-                    this.value = tipoActual;
-                    return;
-                }
-            }
             tipoActual = newTipo;
             
             if (this.value === 'visual') {
@@ -563,22 +553,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (selectRotulo) {
         selectRotulo.addEventListener('change', async function() {
             const newEnsayo = this.value;
-            if (tieneDatosSinGuardar()) {
-                const result = await Swal.fire({
-                    title: '¿Descartar datos?',
-                    text: 'Tienes datos en la fila actual sin haber pulsado "Añadir". ¿Seguro que no quieres guardar esta fila?',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, descartar',
-                    cancelButtonText: 'No, quedarme',
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6'
-                });
-                if (!result.isConfirmed) {
-                    this.value = ensayoActual;
-                    return;
-                }
-            }
             if (ensayoActual) guardarFormHeaderEnEnsayo(ensayoActual);
             ensayoActual = newEnsayo;
             restaurarFormHeaderDesdeEnsayo(ensayoActual);
@@ -620,6 +594,9 @@ document.addEventListener('DOMContentLoaded', () => {
     var rowFechaEnsayo = document.querySelector('.packing-fecha-ensayo-row');
     var sectionDatos = document.getElementById('packing_datos_section');
     var msgNoEnsayos = document.getElementById('view_no_ensayos_msg');
+    var packingYaEnviadoPorFecha = {};
+    var packingBloqueadoParaActual = false;
+    var numFilasEsperadoPorFechaEnsayo = {};
     if (inputFechaPacking && selEnsayoPacking) {
         selEnsayoPacking.addEventListener('change', async function () {
             const fecha = (inputFechaPacking.value || '').trim();
@@ -630,8 +607,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (fecha && newEnsayo) {
                 restaurarPackingDesdeStore(fecha, newEnsayo);
                 try {
-                    var res = await getDatosPacking(fecha, newEnsayo);
-                    if (res.ok && res.data) aplicarDatosVistaPacking(res.data);
+                    // skipCache=true: numFilas debe venir siempre del GET (cuenta filas con misma FECHA + ENSAYO_NUMERO en la hoja)
+                    var res = await getDatosPacking(fecha, newEnsayo, true);
+                    if (res.ok && res.data) aplicarDatosVistaPacking(res.data, res.fromCache);
                 } catch (_) {}
             }
             if (newEnsayo && datosEnsayos && datosEnsayos.visual && datosEnsayos.visual[newEnsayo] && Array.isArray(datosEnsayos.visual[newEnsayo].visual) && datosEnsayos.visual[newEnsayo].visual.length > 0) {
@@ -654,12 +632,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (rowFechaEnsayo) rowFechaEnsayo.classList.add('is-loading');
             try {
                 var res = await getEnsayosPorFecha(fecha);
+                packingYaEnviadoPorFecha[fecha] = (res.ensayosConPacking && typeof res.ensayosConPacking === 'object') ? res.ensayosConPacking : {};
                 selEnsayoPacking.innerHTML = '<option value="" disabled selected>Seleccione ensayo...</option>';
                 if (res.ok && res.ensayos && res.ensayos.length > 0) {
                     res.ensayos.forEach(function (n) {
                         var opt = document.createElement('option');
                         opt.value = n;
-                        opt.textContent = 'Ensayo ' + n;
+                        var tienePacking = packingYaEnviadoPorFecha[fecha] && packingYaEnviadoPorFecha[fecha][n];
+                        opt.textContent = 'Ensayo ' + n + (tienePacking ? ' (Packing ✔)' : '');
+                        if (tienePacking) opt.disabled = true;
                         selEnsayoPacking.appendChild(opt);
                     });
                 } else {
@@ -695,13 +676,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (rowFechaEnsayo) rowFechaEnsayo.classList.add('is-loading');
             if (sectionDatos) sectionDatos.classList.add('is-loading');
             try {
-                const res = await getDatosPacking(fecha, ensayoNumero);
+                // skipCache=true para obtener numFilas actualizado del servidor (evitar caché con valor antiguo)
+                const res = await getDatosPacking(fecha, ensayoNumero, true);
                 if (!res.ok || !res.data) {
                     Swal.fire({ title: 'Sin datos', text: res.error || 'No hay registro para esa fecha y ensayo.', icon: 'info' });
                     return;
                 }
                 const d = res.data;
-                aplicarDatosVistaPacking(d);
+                aplicarDatosVistaPacking(d, res.fromCache);
                 currentFechaPacking = fecha;
                 currentEnsayoPacking = ensayoNumero;
                 restaurarPackingDesdeStore(fecha, ensayoNumero);
@@ -814,10 +796,27 @@ document.addEventListener('DOMContentLoaded', () => {
         actualizarTodosContadoresPacking();
     }
 
-    /** Rellena los campos de vista (solo lectura) y maxFilasPacking desde la respuesta del GET. */
-    function aplicarDatosVistaPacking(d) {
+    /** Rellena los campos de vista (solo lectura) y maxFilasPacking desde la respuesta del GET. Si tienePacking, bloquea envío. */
+    function aplicarDatosVistaPacking(d, fromCache) {
         if (!d) return;
+        console.log('[Packing] aplicarDatosVistaPacking: numFilas=' + (d.numFilas != null ? d.numFilas : 'n/a') + (fromCache ? ' (desde caché)' : ' (desde servidor)'));
         if (d.numFilas != null && d.numFilas > 0) maxFilasPacking = d.numFilas;
+        if (typeof currentFechaPacking !== 'undefined' && typeof currentEnsayoPacking !== 'undefined') {
+            var keyFeEn = keyPacking(currentFechaPacking, currentEnsayoPacking);
+            if (keyFeEn) numFilasEsperadoPorFechaEnsayo[keyFeEn] = (d.numFilas != null && d.numFilas > 0) ? d.numFilas : null;
+        }
+        packingBloqueadoParaActual = d.tienePacking === true;
+        if (btnGuardarPacking) {
+            btnGuardarPacking.disabled = packingBloqueadoParaActual;
+            if (packingBloqueadoParaActual && typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Ya trabajado',
+                    text: 'Ya existe información de packing para esta fecha y ensayo. No se puede subir más. Elige otra fecha o ensayo.',
+                    icon: 'info',
+                    confirmButtonColor: '#2f7cc0'
+                });
+            }
+        }
         const set = function (id, val) {
             var el = document.getElementById(id);
             if (!el) return;
@@ -882,15 +881,54 @@ document.addEventListener('DOMContentLoaded', () => {
         packing8: { observacion: '' }
     };
 
-    /** Comprueba si en ESA sección se puede agregar otra fila. Solo bloquea en la sección que llegó al límite; los demás wrappers siguen pudiendo agregar desde 1. */
+    /** Comprueba si en ESA sección se puede agregar otra fila. packing2 (Pesos) limita por maxFilasPacking; el resto por packing2.length. */
+    /** Packing 1 y 2 se llenan libres (dinámicos). Packing 3-8 requieren al menos una fila en Packing 1 o 2; su tope es packing2.length. */
     function canAgregarFilaPacking(sectionKey) {
         const arr = datosPacking[sectionKey];
         if (!arr) return true;
-        if (arr.length >= maxFilasPacking) {
+        // wrapper_packing_1 y wrapper_packing_2: sin validar "primero Pesos"; pueden llenar libremente.
+        if (sectionKey === 'packing1') {
+            const limite = datosPacking.packing2.length > 0 ? datosPacking.packing2.length : maxFilasPacking;
+            if (arr.length >= limite) {
+                Swal.fire({
+                    title: 'Límite alcanzado',
+                    text: `Ya tienes ${limite} registros (máximo permitido según ${datosPacking.packing2.length > 0 ? 'Pesos' : 'N° Clamshells'}).`,
+                    icon: 'info',
+                    confirmButtonColor: '#2f7cc0'
+                });
+                return false;
+            }
+            return true;
+        }
+        if (sectionKey === 'packing2') {
+            if (arr.length >= maxFilasPacking) {
+                Swal.fire({
+                    title: 'Límite alcanzado',
+                    text: `Ya tienes ${maxFilasPacking} registros (máximo permitido según N° Clamshells).`,
+                    icon: 'info',
+                    confirmButtonColor: '#2f7cc0'
+                });
+                return false;
+            }
+            return true;
+        }
+        // wrapper_packing_3 a 8: deben tener al menos una fila en Packing 1 o Packing 2 para poder agregar.
+        const hayBase = datosPacking.packing1.length > 0 || datosPacking.packing2.length > 0;
+        if (!hayBase) {
             Swal.fire({
-                title: 'Límite de filas',
-                html: 'En esta sección no se pueden agregar más de <strong>' + maxFilasPacking + '</strong> filas para este ensayo.',
+                title: 'Atención',
+                text: 'Primero agrega al menos una fila en Tiempos (Packing 1) o en Pesos (Packing 2).',
                 icon: 'warning',
+                confirmButtonColor: '#2f7cc0'
+            });
+            return false;
+        }
+        const limite = datosPacking.packing2.length;
+        if (arr.length >= limite) {
+            Swal.fire({
+                title: 'Límite alcanzado',
+                text: `Ya tienes ${limite} registros (máximo permitido según Pesos).`,
+                icon: 'info',
                 confirmButtonColor: '#2f7cc0'
             });
             return false;
@@ -967,6 +1005,18 @@ document.addEventListener('DOMContentLoaded', () => {
         return len;
     }
 
+    /** Comprueba que las 8 secciones de packing tengan la misma cantidad de filas. */
+    function validarConsistenciaFilasPacking(stored) {
+        if (!stored) return { ok: true };
+        var keys = ['packing1', 'packing2', 'packing3', 'packing4', 'packing5', 'packing6', 'packing7', 'packing8'];
+        var len0 = (stored.packing1 && stored.packing1.length) || 0;
+        for (var i = 1; i < keys.length; i++) {
+            var L = (stored[keys[i]] && stored[keys[i]].length) || 0;
+            if (L !== len0) return { ok: false, lengths: keys.map(function (k) { return (stored[k] && stored[k].length) || 0; }) };
+        }
+        return { ok: true };
+    }
+
     function buildPackingRowsFromStored(stored) {
         var n = getPackingRowCountFromStored(stored);
         var rows = [];
@@ -1006,20 +1056,30 @@ document.addEventListener('DOMContentLoaded', () => {
         idsReg.forEach(function(id) { var el = document.getElementById(id); if (el) el.value = ''; });
     }
 
-    /** Limpia toda la sección Packing: formulario + campos de vista (tras envío exitoso). */
+    /** Limpia toda la sección Packing: formulario + campos de vista + selects (tras envío exitoso). */
     function limpiarTodoPacking() {
         limpiarFormularioPacking();
-        var viewIds = ['view_rotulo', 'view_etapa', 'view_campo', 'view_turno', 'view_placa', 'view_guia_despacho', 'view_variedad', 'view_hora_recepcion', 'view_n_viaje'];
+        var viewIds = ['view_rotulo', 'view_etapa', 'view_campo', 'view_turno', 'view_placa', 'view_guia_despacho', 'view_variedad', 'view_hora_recepcion', 'view_n_viaje', 'view_fecha', 'view_ensayo_numero'];
         viewIds.forEach(function (id) {
             var el = document.getElementById(id);
             if (el) el.value = '';
         });
         var regVar = document.getElementById('reg_variedad');
         if (regVar) regVar.value = '';
+        actualizarTodosContadoresPacking();
     }
 
     if (btnGuardarPacking) {
         btnGuardarPacking.addEventListener('click', async () => {
+            if (packingBloqueadoParaActual) {
+                Swal.fire({
+                    title: 'Ya trabajado',
+                    text: 'Este ensayo ya tiene packing en la hoja. No se puede subir más. Cambia de fecha o ensayo.',
+                    icon: 'warning',
+                    confirmButtonColor: '#2f7cc0'
+                });
+                return;
+            }
             var fechaEl = document.getElementById('view_fecha');
             var ensayoEl = document.getElementById('view_ensayo_numero');
             var fecha = (fechaEl && fechaEl.value) ? fechaEl.value.trim() : (currentFechaPacking || '');
@@ -1035,14 +1095,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 Swal.fire({ title: 'Falta fecha', text: 'Elige una fecha para enviar packing.', icon: 'warning' });
                 return;
             }
+            var conPacking = packingYaEnviadoPorFecha[fecha] || {};
             var ensayosAEnviar = [1, 2, 3, 4].filter(function (e) {
+                if (conPacking[String(e)]) return false;
                 var key = keyPacking(fecha, e);
                 var stored = datosPackingPorEnsayo[key];
                 return stored && getPackingRowCountFromStored(stored) > 0;
             });
             if (ensayosAEnviar.length === 0) {
-                Swal.fire({ title: 'Sin datos', text: 'No hay datos de packing para enviar. Elige fecha y ensayo, agrega al menos una fila (botón +) y vuelve a Enviar.', icon: 'info' });
+                Swal.fire({ title: 'Sin datos', text: 'No hay datos de packing para enviar o los ensayos ya tienen packing. Elige fecha y ensayo, agrega al menos una fila (botón +) y vuelve a Enviar.', icon: 'info' });
                 return;
+            }
+            for (var v = 0; v < ensayosAEnviar.length; v++) {
+                var keyV = keyPacking(fecha, String(ensayosAEnviar[v]));
+                var stV = datosPackingPorEnsayo[keyV];
+                var valid = validarConsistenciaFilasPacking(stV);
+                if (!valid.ok) {
+                    Swal.fire({
+                        title: 'Inconsistencia de filas',
+                        html: 'El <strong>Ensayo ' + ensayosAEnviar[v] + '</strong> no tiene la misma cantidad de filas en todas las secciones (Packing 1 a 8).<br><br>Las filas deben coincidir en total antes de enviar.',
+                        icon: 'error',
+                        confirmButtonColor: '#d33'
+                    });
+                    return;
+                }
+                var numEsperado = numFilasEsperadoPorFechaEnsayo[keyV];
+                if (numEsperado == null) {
+                    var cache = getPackingCache();
+                    var cached = (cache.datosByFechaEnsayo && cache.datosByFechaEnsayo[keyV]) || (cache.lastRow && cache.lastRow.fecha === fecha && String(cache.lastRow.ensayo_numero) === String(ensayosAEnviar[v]) && cache.lastRow.data ? cache.lastRow.data : null);
+                    if (cached && cached.numFilas != null && cached.numFilas > 0) numEsperado = cached.numFilas;
+                }
+                var numActual = getPackingRowCountFromStored(stV);
+                if (numEsperado != null && numEsperado > 0 && numActual !== numEsperado) {
+                    Swal.fire({
+                        title: 'Cantidad de filas',
+                        html: 'En Visual se registró con <strong>' + numEsperado + '</strong> fila(s) para esta fecha y ensayo. Debe registrarse <strong>' + numEsperado + '</strong> fila(s) en packing. Tienes <strong>' + numActual + '</strong> fila(s) para el Ensayo ' + ensayosAEnviar[v] + '.',
+                        icon: 'error',
+                        confirmButtonColor: '#d33'
+                    });
+                    return;
+                }
             }
             var totalFilas = 0;
             for (var t = 0; t < ensayosAEnviar.length; t++) {
@@ -1063,6 +1155,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!result.isConfirmed) return;
 
             btnGuardarPacking.disabled = true;
+            var packingText = btnGuardarPacking.querySelector('.btn-guardar-text');
+            var spinnerPacking = document.getElementById('spinner_packing');
+            if (packingText) packingText.textContent = 'Guardando...';
+            if (spinnerPacking) spinnerPacking.style.display = 'inline-block';
             var cache = getPackingCache();
             var enviados = 0;
             try {
@@ -1084,9 +1180,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (enviados > 0) {
                     limpiarTodoPacking();
+                    for (var b = 1; b <= 8; b++) {
+                        var bodyId = 'body-packing-' + b;
+                        var bodyEl = document.getElementById(bodyId);
+                        var headerEl = document.querySelector('[data-target="' + bodyId + '"]');
+                        var chevronEl = headerEl ? headerEl.querySelector('.chevron') : null;
+                        if (bodyEl) bodyEl.style.display = 'none';
+                        if (chevronEl) chevronEl.classList.remove('rotate');
+                    }
                     await Swal.fire({
                         title: 'Packing enviado',
-                        html: 'Se enviaron <strong>' + enviados + '</strong> ensayo(s): Ensayo ' + ensayosAEnviar.join(', Ensayo ') + '.<br><br>Se limpió el formulario.',
+                        html: 'Se enviaron <strong>' + enviados + '</strong> ensayo(s): Ensayo ' + ensayosAEnviar.join(', Ensayo ') + '.<br><br>Se limpió el formulario y se cerraron los bloques.',
                         icon: 'success',
                         confirmButtonColor: '#2f7cc0'
                     });
@@ -1095,28 +1199,59 @@ document.addEventListener('DOMContentLoaded', () => {
                 Swal.fire({ title: 'Error', text: (e && e.message) || 'No se pudo enviar el packing.', icon: 'error', confirmButtonColor: '#d33' });
             } finally {
                 btnGuardarPacking.disabled = false;
+                if (packingText) packingText.textContent = 'ENVIAR PACKING';
+                if (spinnerPacking) spinnerPacking.style.display = 'none';
             }
         });
     }
 
-    function eliminarFilaPacking(index) {
-        ['packing1','packing2','packing3','packing4','packing5','packing6','packing7','packing8'].forEach(k => {
-            datosPacking[k].splice(index, 1);
+    // Eliminar solo en ESA sección. Cada wrapper es independiente. Siempre pide confirmación con SweetAlert.
+    function eliminarFilaPacking(sectionKey, index) {
+        Swal.fire({
+            title: '¿Eliminar fila?',
+            text: '¿Estás seguro de que deseas eliminar esta fila?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d'
+        }).then(function (result) {
+            if (!result.isConfirmed) return;
+            const arr = sectionKey && datosPacking[sectionKey];
+            if (!arr || !Array.isArray(arr) || index < 0 || index >= arr.length) return;
+            arr.splice(index, 1);
+            renderAllPackingRows();
+            actualizarTodosContadoresPacking();
         });
-        renderAllPackingRows();
-        actualizarTodosContadoresPacking();
     }
 
-    // Replicar: igualar cantidad de filas a Pesos copiando la última fila. Nunca crea filas vacías: si una sección tiene 0 filas, no se agrega nada ahí (la decisión es del usuario).
-    function replicarHastaPacking2() {
-        const ref = datosPacking.packing2.length;
-        ['packing1','packing3','packing4','packing5','packing6','packing7','packing8'].forEach(k => {
-            const arr = datosPacking[k];
-            while (arr.length < ref) {
-                if (arr.length > 0) arr.push({ ...arr[arr.length - 1] });
-                else break;
-            }
-        });
+    // Replicar solo en ESA sección. Referencia = wrapper_packing_2 (Pesos): no se puede tener más filas que las de Packing 2. Packing 2 no tiene botón Replica (es el padre).
+    const SECTION_KEYS_REPLICA = ['packing1', 'packing3', 'packing4', 'packing5', 'packing6', 'packing7', 'packing8'];
+    function replicarHastaPacking2(sectionKey, rowIndex) {
+        const ref = (datosPacking.packing2 && datosPacking.packing2.length) || 0;
+        if (ref === 0) {
+            Swal.fire({
+                title: 'Atención',
+                text: 'No hay filas en Pesos (Packing 2). Agrega al menos una fila en Pesos para poder replicar.',
+                icon: 'warning',
+                confirmButtonColor: '#2f7cc0'
+            });
+            return;
+        }
+        const arr = sectionKey && datosPacking[sectionKey];
+        if (!arr || !Array.isArray(arr)) return;
+        if (arr.length >= ref) {
+            Swal.fire({
+                title: 'Límite alcanzado',
+                text: 'Ya tienes ' + ref + ' fila(s), que es la cantidad según Pesos (Packing 2). No se puede replicar más en esta sección.',
+                icon: 'info',
+                confirmButtonColor: '#2f7cc0'
+            });
+            return;
+        }
+        var fuente = (rowIndex >= 0 && arr[rowIndex] != null) ? arr[rowIndex] : (arr.length > 0 ? arr[arr.length - 1] : (emptiesPacking[sectionKey] || {}));
+        arr.push(typeof fuente === 'object' && fuente !== null ? { ...fuente } : {});
         renderAllPackingRows();
         actualizarTodosContadoresPacking();
     }
@@ -1128,8 +1263,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.appendChild(row);
         if (window.lucide) lucide.createIcons();
         row.querySelector('.btn-edit-row').addEventListener('click', () => editarFilaPacking1(num - 1, data));
-        row.querySelector('.btn-delete-row').addEventListener('click', () => eliminarFilaPacking(num - 1));
-        row.querySelector('.btn-replicate-row').addEventListener('click', () => { replicarHastaPacking2(); });
+        row.querySelector('.btn-delete-row').addEventListener('click', () => eliminarFilaPacking('packing1', num - 1));
+        row.querySelector('.btn-replicate-row').addEventListener('click', () => { replicarHastaPacking2('packing1', num - 1); });
     }
 
     function agregarFilaPacking2(data, tbody, num) {
@@ -1139,7 +1274,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.appendChild(row);
         if (window.lucide) lucide.createIcons();
         row.querySelector('.btn-edit-row').addEventListener('click', () => editarFilaPacking2(num - 1, data));
-        row.querySelector('.btn-delete-row').addEventListener('click', () => eliminarFilaPacking(num - 1));
+        row.querySelector('.btn-delete-row').addEventListener('click', () => eliminarFilaPacking('packing2', num - 1));
     }
 
     function agregarFilaPacking3(data, tbody, num) {
@@ -1149,8 +1284,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.appendChild(row);
         if (window.lucide) lucide.createIcons();
         row.querySelector('.btn-edit-row').addEventListener('click', () => editarFilaPacking3(num - 1, data));
-        row.querySelector('.btn-delete-row').addEventListener('click', () => eliminarFilaPacking(num - 1));
-        row.querySelector('.btn-replicate-row').addEventListener('click', () => { replicarHastaPacking2(); });
+        row.querySelector('.btn-delete-row').addEventListener('click', () => eliminarFilaPacking('packing3', num - 1));
+        row.querySelector('.btn-replicate-row').addEventListener('click', () => { replicarHastaPacking2('packing3', num - 1); });
     }
 
     function agregarFilaPacking4(data, tbody, num) {
@@ -1160,8 +1295,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.appendChild(row);
         if (window.lucide) lucide.createIcons();
         row.querySelector('.btn-edit-row').addEventListener('click', () => editarFilaPacking4(num - 1, data));
-        row.querySelector('.btn-delete-row').addEventListener('click', () => eliminarFilaPacking(num - 1));
-        row.querySelector('.btn-replicate-row').addEventListener('click', () => { replicarHastaPacking2(); });
+        row.querySelector('.btn-delete-row').addEventListener('click', () => eliminarFilaPacking('packing4', num - 1));
+        row.querySelector('.btn-replicate-row').addEventListener('click', () => { replicarHastaPacking2('packing4', num - 1); });
     }
 
     function agregarFilaPacking5(data, tbody, num) {
@@ -1171,8 +1306,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.appendChild(row);
         if (window.lucide) lucide.createIcons();
         row.querySelector('.btn-edit-row').addEventListener('click', () => editarFilaPacking5(num - 1, data));
-        row.querySelector('.btn-delete-row').addEventListener('click', () => eliminarFilaPacking(num - 1));
-        row.querySelector('.btn-replicate-row').addEventListener('click', () => { replicarHastaPacking2(); });
+        row.querySelector('.btn-delete-row').addEventListener('click', () => eliminarFilaPacking('packing5', num - 1));
+        row.querySelector('.btn-replicate-row').addEventListener('click', () => { replicarHastaPacking2('packing5', num - 1); });
     }
 
     function agregarFilaPacking6(data, tbody, num) {
@@ -1182,8 +1317,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.appendChild(row);
         if (window.lucide) lucide.createIcons();
         row.querySelector('.btn-edit-row').addEventListener('click', () => editarFilaPacking6(num - 1, data));
-        row.querySelector('.btn-delete-row').addEventListener('click', () => eliminarFilaPacking(num - 1));
-        row.querySelector('.btn-replicate-row').addEventListener('click', () => { replicarHastaPacking2(); });
+        row.querySelector('.btn-delete-row').addEventListener('click', () => eliminarFilaPacking('packing6', num - 1));
+        row.querySelector('.btn-replicate-row').addEventListener('click', () => { replicarHastaPacking2('packing6', num - 1); });
     }
 
     function agregarFilaPacking7(data, tbody, num) {
@@ -1193,8 +1328,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.appendChild(row);
         if (window.lucide) lucide.createIcons();
         row.querySelector('.btn-edit-row').addEventListener('click', () => editarFilaPacking7(num - 1, data));
-        row.querySelector('.btn-delete-row').addEventListener('click', () => eliminarFilaPacking(num - 1));
-        row.querySelector('.btn-replicate-row').addEventListener('click', () => { replicarHastaPacking2(); });
+        row.querySelector('.btn-delete-row').addEventListener('click', () => eliminarFilaPacking('packing7', num - 1));
+        row.querySelector('.btn-replicate-row').addEventListener('click', () => { replicarHastaPacking2('packing7', num - 1); });
     }
 
     function agregarFilaPacking8(data, tbody, num) {
@@ -1204,8 +1339,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.appendChild(row);
         if (window.lucide) lucide.createIcons();
         row.querySelector('.btn-edit-row').addEventListener('click', () => editarFilaPacking8(num - 1, data));
-        row.querySelector('.btn-delete-row').addEventListener('click', () => eliminarFilaPacking(num - 1));
-        row.querySelector('.btn-replicate-row').addEventListener('click', () => { replicarHastaPacking2(); });
+        row.querySelector('.btn-delete-row').addEventListener('click', () => eliminarFilaPacking('packing8', num - 1));
+        row.querySelector('.btn-replicate-row').addEventListener('click', () => { replicarHastaPacking2('packing8', num - 1); });
     }
 
     function renderAllPackingRows() {
@@ -1229,57 +1364,201 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const modalGrid = (labels, inputsHtml) => `<div class="packing-modal-grid">${labels.map((l, i) => `<div class="packing-modal-field"><label>${l}</label>${inputsHtml[i]}</div>`).join('')}</div>`;
+
+    /** Validación Packing 1: recepcion < ingreso_gas < salida_gas < ingreso_prefrio < salida_prefrio (tiempos). */
+    function validarPacking1Tiempos(data) {
+        const r = (data.recepcion || '').trim();
+        const ig = (data.ingreso_gasificado || '').trim();
+        const sg = (data.salida_gasificado || '').trim();
+        const ip = (data.ingreso_prefrio || '').trim();
+        const sp = (data.salida_prefrio || '').trim();
+        if (!r || !ig || !sg || !ip || !sp) return { ok: false, msg: 'Todos los tiempos deben estar llenos.' };
+        if (ig <= r) return { ok: false, msg: 'Ingreso Gasificado debe ser mayor que Recepción.' };
+        if (sg <= ig) return { ok: false, msg: 'Salida Gasificado debe ser mayor que Ingreso Gasificado.' };
+        if (ip <= sg) return { ok: false, msg: 'Ingreso Prefrío debe ser mayor que Salida Gasificado.' };
+        if (sp <= ip) return { ok: false, msg: 'Salida Prefrío debe ser mayor que Ingreso Prefrío.' };
+        return { ok: true };
+    }
+
+    /** Validación Packing 2: peso_recepcion > peso_ingreso_gas >= peso_salida_gas >= peso_ingreso_pre >= peso_salida_pre. */
+    function validarPacking2Pesos(data) {
+        const pr = parseFloat(String(data.peso_recepcion || '').replace(',', '.'));
+        const pig = parseFloat(String(data.peso_ingreso_gasificado || '').replace(',', '.'));
+        const psg = parseFloat(String(data.peso_salida_gasificado || '').replace(',', '.'));
+        const pip = parseFloat(String(data.peso_ingreso_prefrio || '').replace(',', '.'));
+        const psp = parseFloat(String(data.peso_salida_prefrio || '').replace(',', '.'));
+        if (isNaN(pr) || isNaN(pig) || isNaN(psg) || isNaN(pip) || isNaN(psp)) return { ok: false, msg: 'Todos los pesos deben ser números.' };
+        if (pig > pr) return { ok: false, msg: 'Peso Ingreso Gasificado no debe ser mayor que Peso Recepción (debe ser menor o igual).' };
+        if (psg > pig) return { ok: false, msg: 'Peso Salida Gasificado debe ser menor o igual que Peso Ingreso Gasificado.' };
+        if (pip > psg) return { ok: false, msg: 'Peso Ingreso Prefrío debe ser menor o igual que Peso Salida Gasificado.' };
+        if (psp > pip) return { ok: false, msg: 'Peso Salida Prefrío debe ser menor o igual que Peso Ingreso Prefrío.' };
+        return { ok: true };
+    }
+
+    /** Validación numérica: valor >= 0, no letras. Para listas de valores (ej. [recep, ing, sal, pre_in, pre_out]). */
+    function validarPackingNumericoRequerido(valores) {
+        for (let i = 0; i < valores.length; i++) {
+            const v = String(valores[i] ?? '').trim();
+            if (v === '') return { ok: false, msg: 'Todos los campos deben estar llenos.' };
+            const n = parseFloat(v.replace(',', '.'));
+            if (isNaN(n) || n < 0) return { ok: false, msg: 'Solo números mayores o iguales a 0. No letras ni negativos.' };
+        }
+        return { ok: true };
+    }
+
+    /** Validación numérica opcional: si hay valor, debe ser >= 0. */
+    function validarPackingNumericoOpcional(valores) {
+        for (let i = 0; i < valores.length; i++) {
+            const v = String(valores[i] ?? '').trim();
+            if (v === '') continue;
+            const n = parseFloat(v.replace(',', '.'));
+            if (isNaN(n) || n < 0) return { ok: false, msg: 'Los valores deben ser números mayores o iguales a 0. No letras ni negativos.' };
+        }
+        return { ok: true };
+    }
+
     function editarFilaPacking1(index, dataActual) {
         const labels = ['Recep.', 'In Gas.', 'Out Gas.', 'In Pre.', 'Out Pre.'];
         const ids = ['e_recep','e_ing','e_sal','e_pre_in','e_pre_out'];
         const vals = [dataActual.recepcion, dataActual.ingreso_gasificado, dataActual.salida_gasificado, dataActual.ingreso_prefrio, dataActual.salida_prefrio];
         const inputs = ids.map((id, i) => `<input type="time" id="${id}" class="swal2-input" value="${vals[i] || ''}">`);
         var numFila = index + 1;
-        Swal.fire({ title: 'Editar Tiempos — Fila #' + numFila, customClass: { popup: 'packing-edit-modal' }, html: modalGrid(labels, inputs), showCancelButton: true, confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar', preConfirm: () => ({ recepcion: document.getElementById('e_recep').value, ingreso_gasificado: document.getElementById('e_ing').value, salida_gasificado: document.getElementById('e_sal').value, ingreso_prefrio: document.getElementById('e_pre_in').value, salida_prefrio: document.getElementById('e_pre_out').value }) }).then(r => { if (r.isConfirmed && r.value) { datosPacking.packing1[index] = r.value; renderAllPackingRows(); } });
+        Swal.fire({
+            title: 'Editar Tiempos — Fila #' + numFila,
+            customClass: { popup: 'packing-edit-modal' },
+            html: modalGrid(labels, inputs),
+            showCancelButton: true,
+            confirmButtonText: 'Guardar',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const val = { recepcion: document.getElementById('e_recep').value, ingreso_gasificado: document.getElementById('e_ing').value, salida_gasificado: document.getElementById('e_sal').value, ingreso_prefrio: document.getElementById('e_pre_in').value, salida_prefrio: document.getElementById('e_pre_out').value };
+                const res = validarPacking1Tiempos(val);
+                if (!res.ok) { Swal.showValidationMessage(res.msg); return false; }
+                return val;
+            }
+        }).then(r => { if (r.isConfirmed && r.value) { datosPacking.packing1[index] = r.value; renderAllPackingRows(); } });
     }
     function editarFilaPacking2(index, dataActual) {
         const labels = ['Recep. (gr)', 'In Gas. (gr)', 'Out Gas. (gr)', 'In Pre. (gr)', 'Out Pre. (gr)'];
         const ids = ['e_p1','e_p2','e_p3','e_p4','e_p5'];
         const vals = [dataActual.peso_recepcion, dataActual.peso_ingreso_gasificado, dataActual.peso_salida_gasificado, dataActual.peso_ingreso_prefrio, dataActual.peso_salida_prefrio];
-        const inputs = ids.map((id, i) => `<input type="number" step="0.1" id="${id}" class="swal2-input" value="${vals[i] ?? ''}">`);
+        const inputs = ids.map((id, i) => `<input type="number" step="0.1" min="0" id="${id}" class="swal2-input" value="${vals[i] ?? ''}">`);
         var numFila = index + 1;
-        Swal.fire({ title: 'Editar Pesos — Fila #' + numFila, customClass: { popup: 'packing-edit-modal' }, html: modalGrid(labels, inputs), showCancelButton: true, confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar', preConfirm: () => ({ peso_recepcion: document.getElementById('e_p1').value, peso_ingreso_gasificado: document.getElementById('e_p2').value, peso_salida_gasificado: document.getElementById('e_p3').value, peso_ingreso_prefrio: document.getElementById('e_p4').value, peso_salida_prefrio: document.getElementById('e_p5').value }) }).then(r => { if (r.isConfirmed && r.value) { datosPacking.packing2[index] = r.value; renderAllPackingRows(); } });
+        Swal.fire({
+            title: 'Editar Pesos — Fila #' + numFila,
+            customClass: { popup: 'packing-edit-modal' },
+            html: modalGrid(labels, inputs),
+            showCancelButton: true,
+            confirmButtonText: 'Guardar',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const val = { peso_recepcion: document.getElementById('e_p1').value, peso_ingreso_gasificado: document.getElementById('e_p2').value, peso_salida_gasificado: document.getElementById('e_p3').value, peso_ingreso_prefrio: document.getElementById('e_p4').value, peso_salida_prefrio: document.getElementById('e_p5').value };
+                const res = validarPacking2Pesos(val);
+                if (!res.ok) { Swal.showValidationMessage(res.msg); return false; }
+                return val;
+            }
+        }).then(r => { if (r.isConfirmed && r.value) { datosPacking.packing2[index] = r.value; renderAllPackingRows(); } });
     }
     function editarFilaPacking3(index, dataActual) {
         const labels = ['T.amb Recep','T.pulp Recep','T.amb In Gas','T.pulp In Gas','T.amb Out Gas','T.pulp Out Gas','T.amb In Pre','T.pulp In Pre','T.amb Out Pre','T.pulp Out Pre'];
         const ids = ['e_t1','e_t2','e_t3','e_t4','e_t5','e_t6','e_t7','e_t8','e_t9','e_t10'];
         const vals = [dataActual.t_amb_recep, dataActual.t_pulp_recep, dataActual.t_amb_ing, dataActual.t_pulp_ing, dataActual.t_amb_sal, dataActual.t_pulp_sal, dataActual.t_amb_pre_in, dataActual.t_pulp_pre_in, dataActual.t_amb_pre_out, dataActual.t_pulp_pre_out];
-        const inputs = ids.map((id, i) => `<input type="number" step="0.1" id="${id}" class="swal2-input" value="${vals[i] ?? ''}">`);
+        const inputs = ids.map((id, i) => `<input type="number" step="0.1" min="0" id="${id}" class="swal2-input" value="${vals[i] ?? ''}">`);
         var numFila = index + 1;
-        Swal.fire({ title: 'Editar Temperaturas (°C) — Fila #' + numFila, customClass: { popup: 'packing-edit-modal' }, html: modalGrid(labels, inputs), showCancelButton: true, confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar', preConfirm: () => ({ t_amb_recep: document.getElementById('e_t1').value, t_pulp_recep: document.getElementById('e_t2').value, t_amb_ing: document.getElementById('e_t3').value, t_pulp_ing: document.getElementById('e_t4').value, t_amb_sal: document.getElementById('e_t5').value, t_pulp_sal: document.getElementById('e_t6').value, t_amb_pre_in: document.getElementById('e_t7').value, t_pulp_pre_in: document.getElementById('e_t8').value, t_amb_pre_out: document.getElementById('e_t9').value, t_pulp_pre_out: document.getElementById('e_t10').value }) }).then(r => { if (r.isConfirmed && r.value) { datosPacking.packing3[index] = r.value; renderAllPackingRows(); } });
+        Swal.fire({
+            title: 'Editar Temperaturas (°C) — Fila #' + numFila,
+            customClass: { popup: 'packing-edit-modal' },
+            html: modalGrid(labels, inputs),
+            showCancelButton: true,
+            confirmButtonText: 'Guardar',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const v = [document.getElementById('e_t1').value, document.getElementById('e_t2').value, document.getElementById('e_t3').value, document.getElementById('e_t4').value, document.getElementById('e_t5').value, document.getElementById('e_t6').value, document.getElementById('e_t7').value, document.getElementById('e_t8').value, document.getElementById('e_t9').value, document.getElementById('e_t10').value];
+                const res = validarPackingNumericoRequerido(v);
+                if (!res.ok) { Swal.showValidationMessage(res.msg); return false; }
+                return { t_amb_recep: v[0], t_pulp_recep: v[1], t_amb_ing: v[2], t_pulp_ing: v[3], t_amb_sal: v[4], t_pulp_sal: v[5], t_amb_pre_in: v[6], t_pulp_pre_in: v[7], t_amb_pre_out: v[8], t_pulp_pre_out: v[9] };
+            }
+        }).then(r => { if (r.isConfirmed && r.value) { datosPacking.packing3[index] = r.value; renderAllPackingRows(); } });
     }
     function editarFilaPacking4(index, dataActual) {
         const labels = ['Recep.','In Gas.','Out Gas.','In Pre.','Out Pre.'];
         const v = [dataActual.recepcion, dataActual.ingreso_gasificado, dataActual.salida_gasificado, dataActual.ingreso_prefrio, dataActual.salida_prefrio];
-        const inputs = [0,1,2,3,4].map(i => `<input type="number" step="0.1" id="e_h${i}" class="swal2-input" value="${v[i] ?? ''}">`);
+        const inputs = [0,1,2,3,4].map(i => `<input type="number" step="0.1" min="0" id="e_h${i}" class="swal2-input" value="${v[i] ?? ''}">`);
         var numFila = index + 1;
-        Swal.fire({ title: 'Editar Humedad — Fila #' + numFila, customClass: { popup: 'packing-edit-modal' }, html: modalGrid(labels, inputs), showCancelButton: true, confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar', preConfirm: () => ({ recepcion: document.getElementById('e_h0').value, ingreso_gasificado: document.getElementById('e_h1').value, salida_gasificado: document.getElementById('e_h2').value, ingreso_prefrio: document.getElementById('e_h3').value, salida_prefrio: document.getElementById('e_h4').value }) }).then(r => { if (r.isConfirmed && r.value) { datosPacking.packing4[index] = r.value; renderAllPackingRows(); } });
+        Swal.fire({
+            title: 'Editar Humedad — Fila #' + numFila,
+            customClass: { popup: 'packing-edit-modal' },
+            html: modalGrid(labels, inputs),
+            showCancelButton: true,
+            confirmButtonText: 'Guardar',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const val = [document.getElementById('e_h0').value, document.getElementById('e_h1').value, document.getElementById('e_h2').value, document.getElementById('e_h3').value, document.getElementById('e_h4').value];
+                const res = validarPackingNumericoRequerido(val);
+                if (!res.ok) { Swal.showValidationMessage(res.msg); return false; }
+                return { recepcion: val[0], ingreso_gasificado: val[1], salida_gasificado: val[2], ingreso_prefrio: val[3], salida_prefrio: val[4] };
+            }
+        }).then(r => { if (r.isConfirmed && r.value) { datosPacking.packing4[index] = r.value; renderAllPackingRows(); } });
     }
     function editarFilaPacking5(index, dataActual) {
         const labels = ['Recep.','In Gas.','Out Gas.','In Pre.','Out Pre.'];
         const v = [dataActual.recepcion, dataActual.ingreso_gasificado, dataActual.salida_gasificado, dataActual.ingreso_prefrio, dataActual.salida_prefrio];
-        const inputs = [0,1,2,3,4].map(i => `<input type="number" step="0.001" id="e_pr${i}" class="swal2-input" value="${v[i] ?? ''}">`);
+        const inputs = [0,1,2,3,4].map(i => `<input type="number" step="0.001" min="0" id="e_pr${i}" class="swal2-input" value="${v[i] ?? ''}">`);
         var numFila = index + 1;
-        Swal.fire({ title: 'Editar Presión ambiente — Fila #' + numFila, customClass: { popup: 'packing-edit-modal' }, html: modalGrid(labels, inputs), showCancelButton: true, confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar', preConfirm: () => ({ recepcion: document.getElementById('e_pr0').value, ingreso_gasificado: document.getElementById('e_pr1').value, salida_gasificado: document.getElementById('e_pr2').value, ingreso_prefrio: document.getElementById('e_pr3').value, salida_prefrio: document.getElementById('e_pr4').value }) }).then(r => { if (r.isConfirmed && r.value) { datosPacking.packing5[index] = r.value; renderAllPackingRows(); } });
+        Swal.fire({
+            title: 'Editar Presión ambiente — Fila #' + numFila,
+            customClass: { popup: 'packing-edit-modal' },
+            html: modalGrid(labels, inputs),
+            showCancelButton: true,
+            confirmButtonText: 'Guardar',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const val = [document.getElementById('e_pr0').value, document.getElementById('e_pr1').value, document.getElementById('e_pr2').value, document.getElementById('e_pr3').value, document.getElementById('e_pr4').value];
+                const res = validarPackingNumericoRequerido(val);
+                if (!res.ok) { Swal.showValidationMessage(res.msg); return false; }
+                return { recepcion: val[0], ingreso_gasificado: val[1], salida_gasificado: val[2], ingreso_prefrio: val[3], salida_prefrio: val[4] };
+            }
+        }).then(r => { if (r.isConfirmed && r.value) { datosPacking.packing5[index] = r.value; renderAllPackingRows(); } });
     }
     function editarFilaPacking6(index, dataActual) {
         const labels = ['Recep.','In Gas.','Out Gas.','In Pre.','Out Pre.'];
         const v = [dataActual.recepcion, dataActual.ingreso_gasificado, dataActual.salida_gasificado, dataActual.ingreso_prefrio, dataActual.salida_prefrio];
-        const inputs = [0,1,2,3,4].map(i => `<input type="number" step="0.001" id="e_pf${i}" class="swal2-input" value="${v[i] ?? ''}">`);
+        const inputs = [0,1,2,3,4].map(i => `<input type="number" step="0.001" min="0" id="e_pf${i}" class="swal2-input" value="${v[i] ?? ''}">`);
         var numFila = index + 1;
-        Swal.fire({ title: 'Editar Presión fruta — Fila #' + numFila, customClass: { popup: 'packing-edit-modal' }, html: modalGrid(labels, inputs), showCancelButton: true, confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar', preConfirm: () => ({ recepcion: document.getElementById('e_pf0').value, ingreso_gasificado: document.getElementById('e_pf1').value, salida_gasificado: document.getElementById('e_pf2').value, ingreso_prefrio: document.getElementById('e_pf3').value, salida_prefrio: document.getElementById('e_pf4').value }) }).then(r => { if (r.isConfirmed && r.value) { datosPacking.packing6[index] = r.value; renderAllPackingRows(); } });
+        Swal.fire({
+            title: 'Editar Presión fruta — Fila #' + numFila,
+            customClass: { popup: 'packing-edit-modal' },
+            html: modalGrid(labels, inputs),
+            showCancelButton: true,
+            confirmButtonText: 'Guardar',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const val = [document.getElementById('e_pf0').value, document.getElementById('e_pf1').value, document.getElementById('e_pf2').value, document.getElementById('e_pf3').value, document.getElementById('e_pf4').value];
+                const res = validarPackingNumericoRequerido(val);
+                if (!res.ok) { Swal.showValidationMessage(res.msg); return false; }
+                return { recepcion: val[0], ingreso_gasificado: val[1], salida_gasificado: val[2], ingreso_prefrio: val[3], salida_prefrio: val[4] };
+            }
+        }).then(r => { if (r.isConfirmed && r.value) { datosPacking.packing6[index] = r.value; renderAllPackingRows(); } });
     }
     function editarFilaPacking7(index, dataActual) {
         const labels = ['Recep.','In Gas.','Out Gas.','In Pre.','Out Pre.'];
         const v = [dataActual.recepcion, dataActual.ingreso_gasificado, dataActual.salida_gasificado, dataActual.ingreso_prefrio, dataActual.salida_prefrio];
-        const inputs = [0,1,2,3,4].map(i => `<input type="number" step="0.001" id="e_d${i}" class="swal2-input" value="${v[i] ?? ''}">`);
+        const inputs = [0,1,2,3,4].map(i => `<input type="number" step="0.001" min="0" id="e_d${i}" class="swal2-input" value="${v[i] ?? ''}">`);
         var numFila = index + 1;
-        Swal.fire({ title: 'Editar Déficit (Kpa) — Fila #' + numFila, customClass: { popup: 'packing-edit-modal' }, html: modalGrid(labels, inputs), showCancelButton: true, confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar', preConfirm: () => ({ recepcion: document.getElementById('e_d0').value, ingreso_gasificado: document.getElementById('e_d1').value, salida_gasificado: document.getElementById('e_d2').value, ingreso_prefrio: document.getElementById('e_d3').value, salida_prefrio: document.getElementById('e_d4').value }) }).then(r => { if (r.isConfirmed && r.value) { datosPacking.packing7[index] = r.value; renderAllPackingRows(); } });
+        Swal.fire({
+            title: 'Editar Déficit (Kpa) — Fila #' + numFila,
+            customClass: { popup: 'packing-edit-modal' },
+            html: modalGrid(labels, inputs),
+            showCancelButton: true,
+            confirmButtonText: 'Guardar',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const val = [document.getElementById('e_d0').value, document.getElementById('e_d1').value, document.getElementById('e_d2').value, document.getElementById('e_d3').value, document.getElementById('e_d4').value];
+                const res = validarPackingNumericoOpcional(val);
+                if (!res.ok) { Swal.showValidationMessage(res.msg); return false; }
+                return { recepcion: val[0], ingreso_gasificado: val[1], salida_gasificado: val[2], ingreso_prefrio: val[3], salida_prefrio: val[4] };
+            }
+        }).then(r => { if (r.isConfirmed && r.value) { datosPacking.packing7[index] = r.value; renderAllPackingRows(); } });
     }
     function editarFilaPacking8(index, dataActual) {
         var numFila = index + 1;
@@ -1289,13 +1568,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Agregar fila solo en esa sección; Replicar (en Pesos u otras) iguala todo a packing2 y copia última fila.
     const btnAddPacking1 = document.getElementById('btn-add-packing');
     if (btnAddPacking1) btnAddPacking1.addEventListener('click', () => {
-        if (!canAgregarFilaPacking('packing1')) return;
         const recepcion = (document.getElementById('reg_packing_recepcion') && document.getElementById('reg_packing_recepcion').value) || '';
         const ingreso_gasificado = (document.getElementById('reg_packing_ingreso_gasificado') && document.getElementById('reg_packing_ingreso_gasificado').value) || '';
         const salida_gasificado = (document.getElementById('reg_packing_salida_gasificado') && document.getElementById('reg_packing_salida_gasificado').value) || '';
         const ingreso_prefrio = (document.getElementById('reg_packing_ingreso_prefrio') && document.getElementById('reg_packing_ingreso_prefrio').value) || '';
         const salida_prefrio = (document.getElementById('reg_packing_salida_prefrio') && document.getElementById('reg_packing_salida_prefrio').value) || '';
         const data = { recepcion, ingreso_gasificado, salida_gasificado, ingreso_prefrio, salida_prefrio };
+        const res1 = validarPacking1Tiempos(data);
+        if (!res1.ok) { Swal.fire({ title: 'Validación', text: res1.msg, icon: 'warning', confirmButtonColor: '#2f7cc0' }); return; }
         datosPacking.packing1.push(data);
         const tbody = document.getElementById('tbody-packing-1');
         if (tbody) agregarFilaPacking1(data, tbody, datosPacking.packing1.length);
@@ -1309,13 +1589,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnAddPacking2 = document.getElementById('btn-add-pesos');
     if (btnAddPacking2) btnAddPacking2.addEventListener('click', () => {
-        if (!canAgregarFilaPacking('packing2')) return;
         const peso_recepcion = (document.getElementById('reg_packing_peso_recepcion') && document.getElementById('reg_packing_peso_recepcion').value) || '';
         const peso_ingreso_gasificado = (document.getElementById('reg_packing_peso_ingreso_gasificado') && document.getElementById('reg_packing_peso_ingreso_gasificado').value) || '';
         const peso_salida_gasificado = (document.getElementById('reg_packing_peso_salida_gasificado') && document.getElementById('reg_packing_peso_salida_gasificado').value) || '';
         const peso_ingreso_prefrio = (document.getElementById('reg_packing_peso_ingreso_prefrio') && document.getElementById('reg_packing_peso_ingreso_prefrio').value) || '';
         const peso_salida_prefrio = (document.getElementById('reg_packing_peso_salida_prefrio') && document.getElementById('reg_packing_peso_salida_prefrio').value) || '';
         const data = { peso_recepcion, peso_ingreso_gasificado, peso_salida_gasificado, peso_ingreso_prefrio, peso_salida_prefrio };
+        const res2 = validarPacking2Pesos(data);
+        if (!res2.ok) { Swal.fire({ title: 'Validación', text: res2.msg, icon: 'warning', confirmButtonColor: '#2f7cc0' }); return; }
         datosPacking.packing2.push(data);
         const tbody = document.getElementById('tbody-packing-pesos');
         if (tbody) agregarFilaPacking2(data, tbody, datosPacking.packing2.length);
@@ -1325,9 +1606,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnAddPacking3 = document.getElementById('btn-add-temp');
     if (btnAddPacking3) btnAddPacking3.addEventListener('click', () => {
-        if (!canAgregarFilaPacking('packing3')) return;
         const get = id => (document.getElementById(id) && document.getElementById(id).value) || '';
-        const data = { t_amb_recep: get('reg_packing_temp_amb_recepcion'), t_pulp_recep: get('reg_packing_temp_pulp_recepcion'), t_amb_ing: get('reg_packing_temp_amb_ingreso_gas'), t_pulp_ing: get('reg_packing_temp_pulp_ingreso_gas'), t_amb_sal: get('reg_packing_temp_amb_salida_gas'), t_pulp_sal: get('reg_packing_temp_pulp_salida_gas'), t_amb_pre_in: get('reg_packing_temp_amb_ingreso_pre'), t_pulp_pre_in: get('reg_packing_temp_pulp_ingreso_pre'), t_amb_pre_out: get('reg_packing_temp_amb_salida_pre'), t_pulp_pre_out: get('reg_packing_temp_pulp_salida_pre') };
+        const vals = [get('reg_packing_temp_amb_recepcion'), get('reg_packing_temp_pulp_recepcion'), get('reg_packing_temp_amb_ingreso_gas'), get('reg_packing_temp_pulp_ingreso_gas'), get('reg_packing_temp_amb_salida_gas'), get('reg_packing_temp_pulp_salida_gas'), get('reg_packing_temp_amb_ingreso_pre'), get('reg_packing_temp_pulp_ingreso_pre'), get('reg_packing_temp_amb_salida_pre'), get('reg_packing_temp_pulp_salida_pre')];
+        const res3 = validarPackingNumericoRequerido(vals);
+        if (!res3.ok) { Swal.fire({ title: 'Validación', text: res3.msg, icon: 'warning', confirmButtonColor: '#2f7cc0' }); return; }
+        const data = { t_amb_recep: vals[0], t_pulp_recep: vals[1], t_amb_ing: vals[2], t_pulp_ing: vals[3], t_amb_sal: vals[4], t_pulp_sal: vals[5], t_amb_pre_in: vals[6], t_pulp_pre_in: vals[7], t_amb_pre_out: vals[8], t_pulp_pre_out: vals[9] };
         datosPacking.packing3.push(data);
         const tbody = document.getElementById('tbody-packing-temp');
         if (tbody) agregarFilaPacking3(data, tbody, datosPacking.packing3.length);
@@ -1337,9 +1620,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnAddPacking4 = document.getElementById('btn-add-packing-humedad');
     if (btnAddPacking4) btnAddPacking4.addEventListener('click', () => {
-        if (!canAgregarFilaPacking('packing4')) return;
         const get = id => (document.getElementById(id) && document.getElementById(id).value) || '';
-        const data = { recepcion: get('reg_packing_humedad_recepcion'), ingreso_gasificado: get('reg_packing_humedad_ingreso_gasificado'), salida_gasificado: get('reg_packing_humedad_salida_gasificado'), ingreso_prefrio: get('reg_packing_humedad_ingreso_prefrio'), salida_prefrio: get('reg_packing_humedad_salida_prefrio') };
+        const vals = [get('reg_packing_humedad_recepcion'), get('reg_packing_humedad_ingreso_gasificado'), get('reg_packing_humedad_salida_gasificado'), get('reg_packing_humedad_ingreso_prefrio'), get('reg_packing_humedad_salida_prefrio')];
+        const res4 = validarPackingNumericoRequerido(vals);
+        if (!res4.ok) { Swal.fire({ title: 'Validación', text: res4.msg, icon: 'warning', confirmButtonColor: '#2f7cc0' }); return; }
+        const data = { recepcion: vals[0], ingreso_gasificado: vals[1], salida_gasificado: vals[2], ingreso_prefrio: vals[3], salida_prefrio: vals[4] };
         datosPacking.packing4.push(data);
         const tbody = document.getElementById('tbody-packing-humedad');
         if (tbody) agregarFilaPacking4(data, tbody, datosPacking.packing4.length);
@@ -1349,9 +1634,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnAddPacking5 = document.getElementById('btn-add-packing-presion');
     if (btnAddPacking5) btnAddPacking5.addEventListener('click', () => {
-        if (!canAgregarFilaPacking('packing5')) return;
         const get = id => (document.getElementById(id) && document.getElementById(id).value) || '';
-        const data = { recepcion: get('reg_packing_presion_recepcion'), ingreso_gasificado: get('reg_packing_presion_ingreso_gasificado'), salida_gasificado: get('reg_packing_presion_salida_gasificado'), ingreso_prefrio: get('reg_packing_presion_ingreso_prefrio'), salida_prefrio: get('reg_packing_presion_salida_prefrio') };
+        const vals = [get('reg_packing_presion_recepcion'), get('reg_packing_presion_ingreso_gasificado'), get('reg_packing_presion_salida_gasificado'), get('reg_packing_presion_ingreso_prefrio'), get('reg_packing_presion_salida_prefrio')];
+        const res5 = validarPackingNumericoRequerido(vals);
+        if (!res5.ok) { Swal.fire({ title: 'Validación', text: res5.msg, icon: 'warning', confirmButtonColor: '#2f7cc0' }); return; }
+        const data = { recepcion: vals[0], ingreso_gasificado: vals[1], salida_gasificado: vals[2], ingreso_prefrio: vals[3], salida_prefrio: vals[4] };
         datosPacking.packing5.push(data);
         const tbody = document.getElementById('tbody-packing-presion');
         if (tbody) agregarFilaPacking5(data, tbody, datosPacking.packing5.length);
@@ -1361,9 +1648,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnAddPacking6 = document.getElementById('btn-add-packing-presion-fruta');
     if (btnAddPacking6) btnAddPacking6.addEventListener('click', () => {
-        if (!canAgregarFilaPacking('packing6')) return;
         const get = id => (document.getElementById(id) && document.getElementById(id).value) || '';
-        const data = { recepcion: get('reg_packing_presion_fruta_recepcion'), ingreso_gasificado: get('reg_packing_presion_fruta_ingreso_gasificado'), salida_gasificado: get('reg_packing_presion_fruta_salida_gasificado'), ingreso_prefrio: get('reg_packing_presion_fruta_ingreso_prefrio'), salida_prefrio: get('reg_packing_presion_fruta_salida_prefrio') };
+        const vals = [get('reg_packing_presion_fruta_recepcion'), get('reg_packing_presion_fruta_ingreso_gasificado'), get('reg_packing_presion_fruta_salida_gasificado'), get('reg_packing_presion_fruta_ingreso_prefrio'), get('reg_packing_presion_fruta_salida_prefrio')];
+        const res6 = validarPackingNumericoRequerido(vals);
+        if (!res6.ok) { Swal.fire({ title: 'Validación', text: res6.msg, icon: 'warning', confirmButtonColor: '#2f7cc0' }); return; }
+        const data = { recepcion: vals[0], ingreso_gasificado: vals[1], salida_gasificado: vals[2], ingreso_prefrio: vals[3], salida_prefrio: vals[4] };
         datosPacking.packing6.push(data);
         const tbody = document.getElementById('tbody-packing-presion-fruta');
         if (tbody) agregarFilaPacking6(data, tbody, datosPacking.packing6.length);
@@ -1373,9 +1662,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnAddPacking7 = document.getElementById('btn-add-deficit');
     if (btnAddPacking7) btnAddPacking7.addEventListener('click', () => {
-        if (!canAgregarFilaPacking('packing7')) return;
         const get = id => (document.getElementById(id) && document.getElementById(id).value) || '';
-        const data = { recepcion: get('reg_packing_deficit_recepcion'), ingreso_gasificado: get('reg_packing_deficit_ingreso_gasificado'), salida_gasificado: get('reg_packing_deficit_salida_gasificado'), ingreso_prefrio: get('reg_packing_deficit_ingreso_prefrio'), salida_prefrio: get('reg_packing_deficit_salida_prefrio') };
+        const vals = [get('reg_packing_deficit_recepcion'), get('reg_packing_deficit_ingreso_gasificado'), get('reg_packing_deficit_salida_gasificado'), get('reg_packing_deficit_ingreso_prefrio'), get('reg_packing_deficit_salida_prefrio')];
+        const res7 = validarPackingNumericoOpcional(vals);
+        if (!res7.ok) { Swal.fire({ title: 'Validación', text: res7.msg, icon: 'warning', confirmButtonColor: '#2f7cc0' }); return; }
+        const data = { recepcion: vals[0], ingreso_gasificado: vals[1], salida_gasificado: vals[2], ingreso_prefrio: vals[3], salida_prefrio: vals[4] };
         datosPacking.packing7.push(data);
         const tbody = document.getElementById('tbody-packing-deficit');
         if (tbody) agregarFilaPacking7(data, tbody, datosPacking.packing7.length);
@@ -1385,7 +1676,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnAddPacking8 = document.getElementById('btn-add-packing-obs');
     if (btnAddPacking8) btnAddPacking8.addEventListener('click', () => {
-        if (!canAgregarFilaPacking('packing8')) return;
         const observacion = (document.getElementById('reg_packing_obs_texto') && document.getElementById('reg_packing_obs_texto').value) || '';
         datosPacking.packing8.push({ observacion });
         const tbody = document.getElementById('tbody-packing-obs');
@@ -1549,7 +1839,7 @@ document.addEventListener('DOMContentLoaded', () => {
         row.innerHTML = `
             <td class="row-id">${rowNum}</td>
             <td>${data.jarra}</td>
-            <td>${data.tipo}</td>
+            <td>${data.tipo === 'C' ? 'Cosecha' : (data.tipo === 'T' ? 'Traslado' : data.tipo)}</td>
             <td>${data.inicio}</td>
             <td>${data.termino}</td>
             <td>${data.tiempo}</td>
@@ -2563,7 +2853,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 return;
             }
-            
+            const maxClam = datosEnsayos.visual[ensayoActual].visual.length;
+            if (datosEnsayos.visual[ensayoActual].temperaturas.length >= maxClam) {
+                Swal.fire({
+                    title: 'Límite alcanzado',
+                    text: `Ya tienes ${maxClam} registros (máximo permitido según N° Clamshells).`,
+                    icon: 'info',
+                    confirmButtonColor: '#2f7cc0'
+                });
+                return;
+            }
             const campos = [
                 { id: 'reg_temp_inicio_amb', label: 'Temp. inicio ambiente' },
                 { id: 'reg_temp_inicio_pul', label: 'Temp. inicio pulpa' },
@@ -2640,7 +2939,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 return;
             }
-            
+            const maxClam = datosEnsayos.visual[ensayoActual].visual.length;
+            if (datosEnsayos.visual[ensayoActual].tiempos.length >= maxClam) {
+                Swal.fire({
+                    title: 'Límite alcanzado',
+                    text: `Ya tienes ${maxClam} registros (máximo permitido según N° Clamshells).`,
+                    icon: 'info',
+                    confirmButtonColor: '#2f7cc0'
+                });
+                return;
+            }
             const inicio = document.getElementById('reg_tiempos_inicio_c').value || '';
             const perdida = document.getElementById('reg_tiempos_perdida_peso').value || '';
             const termino = document.getElementById('reg_tiempos_termino_c').value || '';
@@ -2691,7 +2999,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 return;
             }
-            
+            const maxClam = datosEnsayos.visual[ensayoActual].visual.length;
+            if (datosEnsayos.visual[ensayoActual].humedad.length >= maxClam) {
+                Swal.fire({
+                    title: 'Límite alcanzado',
+                    text: `Ya tienes ${maxClam} registros (máximo permitido según N° Clamshells).`,
+                    icon: 'info',
+                    confirmButtonColor: '#2f7cc0'
+                });
+                return;
+            }
             const ids = ['reg_humedad_inicio', 'reg_humedad_termino', 'reg_humedad_llegada', 'reg_humedad_despacho'];
             const labels = ['Humedad inicio', 'Humedad término', 'Humedad llegada', 'Humedad despacho'];
             const vals = ids.map(id => (document.getElementById(id) && document.getElementById(id).value || '').trim());
@@ -2746,7 +3063,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 return;
             }
-            
+            const maxClam = datosEnsayos.visual[ensayoActual].visual.length;
+            if (datosEnsayos.visual[ensayoActual].presionambiente.length >= maxClam) {
+                Swal.fire({
+                    title: 'Límite alcanzado',
+                    text: `Ya tienes ${maxClam} registros (máximo permitido según N° Clamshells).`,
+                    icon: 'info',
+                    confirmButtonColor: '#2f7cc0'
+                });
+                return;
+            }
             const ids = ['reg_presion_amb_inicio', 'reg_presion_amb_termino', 'reg_presion_amb_llegada', 'reg_presion_amb_despacho'];
             const vals = ids.map(id => (document.getElementById(id) && document.getElementById(id).value || '').trim());
             for (let i = 0; i < ids.length; i++) {
@@ -2800,7 +3126,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 return;
             }
-            
+            const maxClam = datosEnsayos.visual[ensayoActual].visual.length;
+            if (datosEnsayos.visual[ensayoActual].presionfruta.length >= maxClam) {
+                Swal.fire({
+                    title: 'Límite alcanzado',
+                    text: `Ya tienes ${maxClam} registros (máximo permitido según N° Clamshells).`,
+                    icon: 'info',
+                    confirmButtonColor: '#2f7cc0'
+                });
+                return;
+            }
             const ids = ['reg_presion_fruta_inicio', 'reg_presion_fruta_termino', 'reg_presion_fruta_llegada', 'reg_presion_fruta_despacho'];
             const vals = ids.map(id => (document.getElementById(id) && document.getElementById(id).value || '').trim());
             for (let i = 0; i < ids.length; i++) {
@@ -2854,7 +3189,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 return;
             }
-            
+            const maxClam = datosEnsayos.visual[ensayoActual].visual.length;
+            if (datosEnsayos.visual[ensayoActual].observacion.length >= maxClam) {
+                Swal.fire({
+                    title: 'Límite alcanzado',
+                    text: `Ya tienes ${maxClam} registros (máximo permitido según N° Clamshells).`,
+                    icon: 'info',
+                    confirmButtonColor: '#2f7cc0'
+                });
+                return;
+            }
             const observacion = document.getElementById('reg_observacion_texto').value || '';
 
             const tbody = document.getElementById('tbody-observacion');

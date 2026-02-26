@@ -278,6 +278,12 @@ function doPostPacking(sheet, data) {
       return { ok: false, error: 'No se encontró ninguna fila para esa fecha y ensayo' };
     }
 
+    var primeraFila = rowIndices[0];
+    var celdaPacking = sheet.getRange(primeraFila, 53).getValue();
+    if (celdaPacking != null && String(celdaPacking).trim() !== '') {
+      return { ok: false, error: 'Ya existe información de packing para esta fecha y ensayo. No se puede sobrescribir.' };
+    }
+
     var startCol = 53;
     var COLS_POR_FILA = 2 + 41; // HORA_RECEPCION, N_VIAJE + 41 valores por fila lógica
     var baseHeaders = ['HORA_RECEPCION', 'N_VIAJE'].concat(getPackingHeaderNamesPerRow());
@@ -326,7 +332,7 @@ function doGet(e) {
   var result = { ok: false, data: null, error: null, fechas: null, ensayos: null };
   try {
     var params = e && e.parameter ? e.parameter : {};
-    var fecha = (params.fecha || '').toString().trim();
+    var fechaParam = (params.fecha || '').toString().trim();
     var ensayoNumero = (params.ensayo_numero || '').toString().trim();
     var callback = (params.callback || '').toString().trim();
     if (!/^[a-zA-Z0-9_]+$/.test(callback)) callback = '';
@@ -336,14 +342,15 @@ function doGet(e) {
       return outputJson(obj);
     }
 
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    // Misma hoja que doPost (primera hoja) para que el conteo de filas coincida con la hoja donde se escriben los datos
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) {
       result.error = 'No hay datos en la hoja';
       return returnOutput(result);
     }
 
-    var data = sheet.getRange(2, 1, lastRow - 1, 14).getValues();
+    var data = sheet.getRange(2, 1, lastRow, 14).getValues();
 
     /**
      * SIEMPRE devuelve yyyy-MM-dd (nunca "Tue Feb 17 2026 GMT-0500..."). Así Netlify recibe fechas cortas.
@@ -378,6 +385,8 @@ function doGet(e) {
       if (d && !isNaN(d.getTime())) return Utilities.formatDate(d, "GMT", "yyyy-MM-dd");
       return s;
     }
+    // Normalizar fecha del request a yyyy-MM-dd para comparar con la hoja
+    var fecha = (fechaParam && formatFecha(fechaParam)) ? formatFecha(fechaParam) : fechaParam;
 
     // 0) Listado de todos los registros (fecha + ensayo) para historial y prevención — una petición, respuesta ligera
     var listadoReg = (params.listado_registrados || '').toString().trim() === '1';
@@ -414,19 +423,26 @@ function doGet(e) {
       return returnOutput(result);
     }
 
-    // 2) Listar ensayos para una fecha (solo fecha) — devuelve números de ensayo (col M = índice 12)
+    // 2) Listar ensayos para una fecha (solo fecha) — devuelve números y si tienen packing (col 53)
     if (fecha && !ensayoNumero) {
-      var ensayosSet = {};
+      var packingCol = (lastRow >= 2) ? sheet.getRange(2, 53, lastRow, 53).getValues() : [];
+      var ensayosInfo = {};
       for (var j = 0; j < data.length; j++) {
         var rowFechaStr = formatFecha(data[j][0]);
         if (rowFechaStr === fecha) {
           var en = String(data[j][12] || '').trim();
-          if (en) ensayosSet[en] = true;
+          if (en) {
+            if (!ensayosInfo[en]) ensayosInfo[en] = { tienePacking: false };
+            if (packingCol[j] && packingCol[j][0] != null && String(packingCol[j][0]).trim() !== '')
+              ensayosInfo[en].tienePacking = true;
+          }
         }
       }
-      var ensayosList = Object.keys(ensayosSet).sort();
+      var ensayosList = Object.keys(ensayosInfo).sort();
       result.ok = true;
       result.ensayos = ensayosList;
+      result.ensayosConPacking = {};
+      ensayosList.forEach(function (e) { result.ensayosConPacking[e] = ensayosInfo[e].tienePacking; });
       return returnOutput(result);
     }
 
@@ -459,14 +475,24 @@ function doGet(e) {
       return returnOutput(result);
     }
 
+    // Normalizar ensayo_numero para comparar igual que en existe_registro (evitar contar de más por "1" vs 1)
+    var enNorm = (ensayoNumero !== null && ensayoNumero !== undefined && String(ensayoNumero).trim() !== '') ? (function () {
+      var n = Number(ensayoNumero);
+      return (!isNaN(n) && n === Math.floor(n)) ? String(n) : String(ensayoNumero).trim();
+    })() : '';
+
     var row = null;
     var filaEnSheet = null;
     var numFilas = 0;
     for (var k = 0; k < data.length; k++) {
       var r = data[k];
       var rowFechaStr = formatFecha(r[0]);
-      var rowNum = String(r[12] != null ? r[12] : '').trim();
-      if (rowFechaStr === fecha && rowNum === ensayoNumero) {
+      var rowEn = r[12];
+      var rowEnStr = (rowEn !== null && rowEn !== undefined && rowEn !== '') ? (function () {
+        var n = Number(rowEn);
+        return (!isNaN(n) && n === Math.floor(n)) ? String(n) : String(rowEn).trim();
+      })() : '';
+      if (rowFechaStr === fecha && rowEnStr === enNorm) {
         if (row == null) {
           row = r;
           filaEnSheet = 2 + k;
@@ -480,10 +506,17 @@ function doGet(e) {
       return returnOutput(result);
     }
 
+    var tienePacking = false;
+    try {
+      var packingVal = sheet.getRange(filaEnSheet, 53).getValue();
+      tienePacking = (packingVal != null && String(packingVal).trim() !== '');
+    } catch (_) {}
+
     result.ok = true;
     result.data = {
       fila: filaEnSheet,
       numFilas: numFilas,
+      tienePacking: tienePacking,
       ENSAYO_NUMERO: row[12],
       TRAZ_ETAPA: row[7],
       TRAZ_CAMPO: row[8],

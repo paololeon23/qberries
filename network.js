@@ -150,7 +150,8 @@ async function sync() {
                 await sendToCloud({ ...item, rows: rowsToSend });
                 let currentItems = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
                 currentItems = currentItems.filter(it => it.uid !== item.uid);
-                currentItems.push({ ...item, rows: rowsToSend, status: 'subido' });
+                const horaSubida = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                currentItems.push({ ...item, rows: rowsToSend, status: 'subido', subidoAt: horaSubida });
                 rowsRejected.forEach(row => {
                     currentItems.push({
                         uid: 'REG-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
@@ -168,8 +169,9 @@ async function sync() {
 
             await sendToCloud(item);
             let currentItems = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+            const horaSubida = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             currentItems = currentItems.map(it =>
-                it.uid === item.uid ? { ...it, status: 'subido' } : it
+                it.uid === item.uid ? { ...it, status: 'subido', subidoAt: horaSubida } : it
             );
             localStorage.setItem(STORAGE_KEY, JSON.stringify(currentItems));
             updateUI();
@@ -372,20 +374,21 @@ function keyFechaEnsayo(fecha, ensayoNumero) {
     return (fecha || '') + '_' + (ensayoNumero || '');
 }
 
-/** GET: fila por fecha y ensayo_numero. Parámetros: ?fecha=...&ensayo_numero=1|2|3|4. Usa caché por (fecha, ensayo) para no hacer GET repetidos. */
-export async function getDatosPacking(fecha, ensayoNumero) {
+/** GET: fila por fecha y ensayo_numero. Parámetros: ?fecha=...&ensayo_numero=1|2|3|4. Usa caché por (fecha, ensayo) para no hacer GET repetidos. skipCache=true evita usar caché (siempre pide al servidor). */
+export async function getDatosPacking(fecha, ensayoNumero, skipCache) {
     const key = keyFechaEnsayo(fecha, ensayoNumero);
     const cache = getPackingCache();
-    if (cache.datosByFechaEnsayo && cache.datosByFechaEnsayo[key]) {
-        console.log('[getDatosPacking] Caché hit para', key);
+    if (!skipCache && cache.datosByFechaEnsayo && cache.datosByFechaEnsayo[key]) {
+        console.log('[getDatosPacking] Caché hit para', key, '(numFilas=', cache.datosByFechaEnsayo[key].numFilas + ')');
         return { ok: true, data: cache.datosByFechaEnsayo[key], fromCache: true };
     }
-    console.log('[getDatosPacking] Enviando: fecha=' + fecha + ', ensayo_numero=' + ensayoNumero);
+    if (skipCache) console.log('[getDatosPacking] Sin caché: pidiendo al servidor fecha=' + fecha + ', ensayo_numero=' + ensayoNumero);
+    else console.log('[getDatosPacking] Enviando: fecha=' + fecha + ', ensayo_numero=' + ensayoNumero);
     try {
         const url = API_URL + "?fecha=" + encodeURIComponent(fecha) + "&ensayo_numero=" + encodeURIComponent(ensayoNumero);
         const out = await fetchGetJsonp(url);
         if (out.ok && out.data) {
-            console.log('[getDatosPacking] OK. Data recibida.');
+            console.log('[getDatosPacking] OK. Data recibida. numFilas=' + (out.data.numFilas != null ? out.data.numFilas : 'n/a'));
             setPackingCache({
                 lastRow: { fecha, ensayo_numero: ensayoNumero, data: out.data },
                 datosByFechaEnsayo: { [key]: out.data }
