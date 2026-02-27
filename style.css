@@ -69,6 +69,12 @@ body {
     margin-left: 16px;
     margin-bottom: 5px;
 }
+.sidebar-logo-image {
+    height: 34px;
+    width: auto;
+    object-fit: contain;
+    display: block;
+}
 .sidebar-logo-q { color: var(--qberries-red); }
 .sidebar-logo-berries { color: var(--qberries-green); }
 .sidebar-header-qberries ~ ul { border-top: none; }
@@ -240,6 +246,12 @@ header h1 {
 }
 .menu-btn-with-logo .logo-q { color: #c0392b; font-weight: 800; font-size: 1rem; }
 .menu-btn-with-logo .logo-berries { color: #27ae60; font-weight: 700; font-size: 0.9rem; letter-spacing: -0.02em; }
+.menu-btn-with-logo .menu-logo-image {
+    height: 24px;
+    width: auto;
+    object-fit: contain;
+    display: block;
+}
 
 /* INTERN ESTILOS*/
 
@@ -2101,6 +2113,18 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .reporte-qberries .btn-pdf-icon-only i {
     width: 20px;
     height: 20px;
+}
+
+.reporte-qberries .firma-upload-row {
+    display: flex;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.reporte-qberries .firma-file-input {
+    width: 100%;
+    max-width: 340px;
+    font-size: 0.82rem;
 }
 
 /* Título/subtítulo ya no se usan (evitar duplicado con el header de página) */

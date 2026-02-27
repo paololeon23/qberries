@@ -89,8 +89,46 @@ function leerArchivoComoBase64(input) {
     return new Promise(function (resolve) {
         if (!input || !input.files || !input.files[0]) { resolve(''); return; }
         const f = input.files[0];
+        const isImage = (f.type || '').toLowerCase().indexOf('image/') === 0;
+        if (!isImage) {
+            const r = new FileReader();
+            r.onload = () => resolve(r.result);
+            r.onerror = () => resolve('');
+            r.readAsDataURL(f);
+            return;
+        }
         const r = new FileReader();
-        r.onload = () => resolve(r.result);
+        r.onload = function () {
+            const src = typeof r.result === 'string' ? r.result : '';
+            if (!src) { resolve(''); return; }
+            const img = new Image();
+            img.onload = function () {
+                try {
+                    // Compresión previa al POST para evitar 413 (payload demasiado grande).
+                    const maxSide = 1600;
+                    const quality = 0.78;
+                    const w = img.naturalWidth || img.width;
+                    const h = img.naturalHeight || img.height;
+                    if (!w || !h) { resolve(src); return; }
+                    const scale = Math.min(1, maxSide / Math.max(w, h));
+                    const tw = Math.max(1, Math.round(w * scale));
+                    const th = Math.max(1, Math.round(h * scale));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = tw;
+                    canvas.height = th;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) { resolve(src); return; }
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, tw, th);
+                    ctx.drawImage(img, 0, 0, tw, th);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
+                } catch (_) {
+                    resolve(src);
+                }
+            };
+            img.onerror = function () { resolve(src); };
+            img.src = src;
+        };
         r.onerror = () => resolve('');
         r.readAsDataURL(f);
     });

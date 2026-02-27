@@ -15,7 +15,7 @@
     <nav id="sidebar" class="sidebar">
         <div class="sidebar-header sidebar-header-qberries">
             <div class="brand brand-qberries-text">
-                <span class="sidebar-logo-q">Q</span><span class="sidebar-logo-berries">Berries</span>
+                <img src="../Logo.png" alt="QBerries" class="sidebar-logo-image">
             </div>
             <button id="close-btn" class="icon-btn" title="Cerrar menú">
                 <i data-lucide="x-circle"></i>
@@ -33,7 +33,7 @@
         <header>
             <button id="menu-btn" class="menu-btn menu-btn-with-logo">
                 <i data-lucide="menu"></i>
-                <span class="logo-q">Q</span><span class="logo-berries">Berries</span>
+                <img src="../Logo2.png" alt="QBerries" class="menu-logo-image">
             </button>
             <h1>Reporte de Actos y/o Condiciones Inseguras</h1>
             <div id="network-status-container" class="status-card online">
@@ -174,7 +174,9 @@
                 </div>
                 <div class="field-row">
                     <label>FIRMA</label>
-                    <input type="text" id="rep_firma" name="rep_firma" placeholder="Firma">
+                    <div class="firma-upload-row">
+                        <input type="file" id="rep_firma_foto" class="firma-file-input" accept="image/*" aria-label="Subir imagen de firma">
+                    </div>
                 </div>
             </div>
 

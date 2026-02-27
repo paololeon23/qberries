@@ -9,7 +9,7 @@
  * código, versión, aprobación, origen, nombre_empresa, fecha, lugar_ocurrencia, nombre_persona,
  * seguridad_salud, medio_ambiente, causa,
  * descripcion_evento_texto, descripcion_evento_foto, accion_inmediata_texto, accion_inmediata_foto,
- * recomendacion_texto, recomendacion_foto, nombre_reportante, firma,
+ * recomendacion_texto, recomendacion_foto, nombre_reportante,
  * fecha_hora_envio, estado
  */
 
@@ -29,7 +29,7 @@ var HEADERS = [
   'descripcion_evento_texto', 'descripcion_evento_foto',
   'accion_inmediata_texto', 'accion_inmediata_foto',
   'recomendacion_texto', 'recomendacion_foto',
-  'nombre_reportante', 'firma',
+  'nombre_reportante',
   'fecha_hora_envio', 'estado'
 ];
 
@@ -82,12 +82,11 @@ function buildRow(data, isnInter) {
   row[13] = sanitize(val(data.rep_accion));
   row[15] = sanitize(val(data.rep_recomendacion));
   row[17] = sanitize(val(data.rep_reportante));
-  row[18] = sanitize(val(data.rep_firma));
 
   var now = new Date();
   var tz = Session.getScriptTimeZone() || 'UTC';
-  row[19] = Utilities.formatDate(now, tz, 'yyyy-MM-dd HH:mm:ss');
-  row[20] = (data.envio_con_inter === true || data.envio_con_inter === 'true') ? 'CON INTER' : 'SIN INTER';
+  row[18] = Utilities.formatDate(now, tz, 'yyyy-MM-dd HH:mm:ss');
+  row[19] = (data.envio_con_inter === true || data.envio_con_inter === 'true') ? 'CON INTER' : 'SIN INTER';
 
   var fotoDesc = data.rep_foto_descripcion_base64;
   var fotoAccion = data.rep_foto_accion_base64;

@@ -4,6 +4,7 @@
  * SweetAlert se usa desde network.js para mensajes de guardado/error; aquí solo se inicializa lo que toca a la UI.
  */
 import { updateUI, initReporteForm, getHistorialEntries, enviarPendientes } from './network.js';
+let firmaImagenDataUrl = '';
 
 // Estado de conexión y contador de pendientes
                         updateUI();
@@ -26,6 +27,61 @@ function formTieneDatos() {
             return false;
 }
 
+function recortarFirmaDataUrl(dataUrl) {
+    return new Promise((resolve) => {
+        if (!dataUrl) { resolve(''); return; }
+        const img = new Image();
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth || img.width;
+                canvas.height = img.naturalHeight || img.height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) { resolve(dataUrl); return; }
+                ctx.drawImage(img, 0, 0);
+                const w = canvas.width;
+                const h = canvas.height;
+                const pixels = ctx.getImageData(0, 0, w, h).data;
+                let minX = w, minY = h, maxX = -1, maxY = -1;
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        const i = ((y * w) + x) * 4;
+                        const r = pixels[i];
+                        const g = pixels[i + 1];
+                        const b = pixels[i + 2];
+                        const a = pixels[i + 3];
+                        const isInk = a > 10 && !(r > 245 && g > 245 && b > 245);
+                        if (!isInk) continue;
+                        if (x < minX) minX = x;
+                        if (y < minY) minY = y;
+                        if (x > maxX) maxX = x;
+                        if (y > maxY) maxY = y;
+                    }
+                }
+                if (maxX < minX || maxY < minY) { resolve(dataUrl); return; }
+                const pad = 6;
+                minX = Math.max(0, minX - pad);
+                minY = Math.max(0, minY - pad);
+                maxX = Math.min(w - 1, maxX + pad);
+                maxY = Math.min(h - 1, maxY + pad);
+                const outW = maxX - minX + 1;
+                const outH = maxY - minY + 1;
+                const out = document.createElement('canvas');
+                out.width = outW;
+                out.height = outH;
+                const outCtx = out.getContext('2d');
+                if (!outCtx) { resolve(dataUrl); return; }
+                outCtx.drawImage(canvas, minX, minY, outW, outH, 0, 0, outW, outH);
+                resolve(out.toDataURL('image/png'));
+            } catch (_) {
+                resolve(dataUrl);
+            }
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
+    });
+}
+
 function getVal(id) {
     var el = document.getElementById(id);
     if (!el) return '';
@@ -34,7 +90,7 @@ function getVal(id) {
     return (el.textContent || '').toString().trim();
 }
 
-function generarPDFReporte() {
+async function generarPDFReporte(openerEl) {
     var JsPDF = window.jspdf && window.jspdf.jsPDF;
     if (!JsPDF) {
         if (typeof Swal !== 'undefined') Swal.fire({ title: 'Error', text: 'No se pudo cargar la librería PDF.', icon: 'error', confirmButtonColor: '#27ae60' });
@@ -82,6 +138,113 @@ function generarPDFReporte() {
             doc.text('...', x + boxWidth - 4, yTop + boxHeight - 1.8, { align: 'right' });
         }
     }
+    function toCompressedPdfImageFromFile(file) {
+        return new Promise((resolve) => {
+            if (!file) { resolve(''); return; }
+            var reader = new FileReader();
+            reader.onload = () => {
+                var src = typeof reader.result === 'string' ? reader.result : '';
+                if (!src) { resolve(''); return; }
+                var img = new Image();
+                img.onload = () => {
+                    try {
+                        var maxSide = 1600;
+                        var quality = 0.78;
+                        var w = img.naturalWidth || img.width;
+                        var h = img.naturalHeight || img.height;
+                        if (!w || !h) { resolve(src); return; }
+                        var scale = Math.min(1, maxSide / Math.max(w, h));
+                        var tw = Math.max(1, Math.round(w * scale));
+                        var th = Math.max(1, Math.round(h * scale));
+                        var canvas = document.createElement('canvas');
+                        canvas.width = tw;
+                        canvas.height = th;
+                        var ctx = canvas.getContext('2d');
+                        if (!ctx) { resolve(src); return; }
+                        // Fondo blanco para soportar conversiones desde PNG/WebP con transparencia.
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, tw, th);
+                        ctx.drawImage(img, 0, 0, tw, th);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    } catch (_) {
+                        resolve(src);
+                    }
+                };
+                img.onerror = () => resolve(src);
+                img.src = src;
+            };
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(file);
+        });
+    }
+    function readInputImageAsDataUrl(inputId) {
+        return new Promise((resolve) => {
+            var input = document.getElementById(inputId);
+            if (!input || !input.files || !input.files[0]) { resolve(''); return; }
+            toCompressedPdfImageFromFile(input.files[0]).then(resolve).catch(() => resolve(''));
+        });
+    }
+    function drawImageContain(dataUrl, x, yTop, boxW, boxH) {
+        if (!dataUrl) return false;
+        try {
+            var format = 'PNG';
+            if (/^data:image\/jpe?g/i.test(dataUrl)) format = 'JPEG';
+            if (/^data:image\/webp/i.test(dataUrl)) format = 'WEBP';
+            var props = doc.getImageProperties(dataUrl);
+            var imgW = (props && props.width) ? props.width : boxW;
+            var imgH = (props && props.height) ? props.height : boxH;
+            var ratio = imgW / imgH;
+            var drawW = boxW;
+            var drawH = drawW / ratio;
+            if (drawH > boxH) {
+                drawH = boxH;
+                drawW = drawH * ratio;
+            }
+            var drawX = x + ((boxW - drawW) / 2);
+            var drawY = yTop + ((boxH - drawH) / 2);
+            doc.addImage(dataUrl, format, drawX, drawY, drawW, drawH, undefined, 'MEDIUM');
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+    var fotosAnexo = await Promise.all([
+        readInputImageAsDataUrl('rep_foto_descripcion'),
+        readInputImageAsDataUrl('rep_foto_accion'),
+        readInputImageAsDataUrl('rep_foto_recomendacion')
+    ]);
+    function drawFirmaImagen(x, yTop, boxW, boxH) {
+        if (!firmaImagenDataUrl) return false;
+        try {
+            var format = 'PNG';
+            if (/^data:image\/jpe?g/i.test(firmaImagenDataUrl)) format = 'JPEG';
+            if (/^data:image\/webp/i.test(firmaImagenDataUrl)) format = 'WEBP';
+            var pad = 0.1;
+            var innerW = Math.max(1, boxW - (pad * 2));
+            var innerH = Math.max(1, boxH - (pad * 2));
+            var props = doc.getImageProperties(firmaImagenDataUrl);
+            var imgW = (props && props.width) ? props.width : innerW;
+            var imgH = (props && props.height) ? props.height : innerH;
+            var ratio = imgW / imgH;
+            var drawW = innerW;
+            var drawH = drawW / ratio;
+            if (drawH > innerH) {
+                drawH = innerH;
+                drawW = drawH * ratio;
+            }
+            // Efecto "z-index": se dibuja un poco más grande para sobresalir
+            // y parecer una firma real estampada sobre el cuadro.
+            var overflowScale = 1.32;
+            drawW *= overflowScale;
+            drawH *= overflowScale;
+            var drawX = x + pad + ((innerW - drawW) / 2);
+            var drawY = yTop + pad + ((innerH - drawH) / 2) + 1.0;
+            doc.addImage(firmaImagenDataUrl, format, drawX, drawY, drawW, drawH, undefined, 'MEDIUM');
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
 
     doc.setLineWidth(0.25);
     doc.setDrawColor(border[0], border[1], border[2]);
@@ -96,14 +259,24 @@ function generarPDFReporte() {
     doc.line(m + wLogo + wTitle, y + 6, m + w, y + 6);
     doc.line(m + wLogo + wTitle, y + 12, m + w, y + 12);
 
-    doc.setFont(undefined, 'bold');
-    doc.setFontSize(15);
-    doc.setTextColor(192, 57, 43);
-    doc.text('Q', m + 4.2, y + 11.4);
-    doc.setTextColor(39, 174, 96);
-    doc.text('Berries', m + 9.4, y + 11.4);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont(undefined, 'normal');
+    var logoDibujado = false;
+    try {
+        var logoEl = document.querySelector('.sidebar-logo-image') || document.querySelector('.menu-logo-image');
+        if (logoEl && logoEl.complete) {
+            doc.addImage(logoEl, 'PNG', m + 4.6, y + 4.0, 22.8, 9.4, undefined, 'FAST');
+            logoDibujado = true;
+        }
+    } catch (_) {}
+    if (!logoDibujado) {
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(15);
+        doc.setTextColor(192, 57, 43);
+        doc.text('Q', m + 4.2, y + 11.4);
+        doc.setTextColor(39, 174, 96);
+        doc.text('Berries', m + 9.4, y + 11.4);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont(undefined, 'normal');
+    }
 
     doc.setFont(undefined, 'bold');
     doc.setFontSize(8);
@@ -139,7 +312,7 @@ function generarPDFReporte() {
     doc.rect(xArea, y, w - 36, hArea);
     doc.setFont(undefined, 'normal');
     doc.setFontSize(7);
-    doc.text(v('rep_area').substring(0, 90), xArea + 2, y + 8.8);
+    doc.text(v('rep_area').substring(0, 90), xArea + ((w - 36) / 2), y + 8.8, { align: 'center' });
     doc.setFont(undefined, 'normal');
     doc.setFontSize(8);
     doc.text('NOMBRE DE LA EMPRESA CONTRATISTA / ÁREA', xArea + ((w - 36) / 2), y + hArea + 3.2, { align: 'center' });
@@ -155,7 +328,7 @@ function generarPDFReporte() {
     doc.setFontSize(7);
     doc.text(v('rep_fecha_display') || v('rep_fecha'), m + (wFecha / 2), y + 5.5, { align: 'center' });
     doc.setFont(undefined, 'normal');
-    doc.text(v('rep_lugar').substring(0, 82), m + wFecha + gap + 2, y + 5.5);
+    doc.text(v('rep_lugar').substring(0, 82), m + wFecha + gap + (wLugar / 2), y + 5.5, { align: 'center' });
     doc.setFont(undefined, 'normal');
     doc.setFontSize(8);
     doc.text('FECHA', m + (wFecha / 2), y + 11.5, { align: 'center' });
@@ -165,7 +338,7 @@ function generarPDFReporte() {
     doc.rect(m, y, w, 8);
     doc.setFont(undefined, 'normal');
     doc.setFontSize(7);
-    doc.text(v('rep_persona').substring(0, 95), m + 2, y + 5.5);
+    doc.text(v('rep_persona').substring(0, 95), m + (w / 2), y + 5.5, { align: 'center' });
     doc.setFont(undefined, 'normal');
     doc.setFontSize(8);
     doc.text('NOMBRE DE LA PERSONA REPORTADA', m + (w / 2), y + 11.3, { align: 'center' });
@@ -293,15 +466,60 @@ function generarPDFReporte() {
 
     var wRep = 132;
     var wSig = w - wRep - 2;
-    doc.rect(m, y, wRep, 8);
-    doc.rect(m + wRep + 2, y, wSig, 8);
+    var hFirmaRow = 16;
+    doc.rect(m, y, wRep, hFirmaRow);
+    doc.rect(m + wRep + 2, y, wSig, hFirmaRow);
     doc.setFontSize(7);
-    doc.text(v('rep_reportante').substring(0, 70), m + 2, y + 5.2);
-    doc.text(v('rep_firma').substring(0, 30), m + wRep + 4, y + 5.2);
+    doc.text(v('rep_reportante').substring(0, 70), m + (wRep / 2), y + 9.3, { align: 'center' });
+    var firmaBoxX = m + wRep + 2;
+    var firmaDibujada = drawFirmaImagen(firmaBoxX, y, wSig, hFirmaRow);
+    if (!firmaDibujada) {
+        doc.text(v('rep_firma').substring(0, 30), m + wRep + 4, y + 9.5);
+    }
     doc.setFont(undefined, 'normal');
     doc.setFontSize(8);
-    doc.text('NOMBRE DEL REPORTANTE', m + (wRep / 2), y + 11.7, { align: 'center' });
-    doc.text('FIRMA', m + wRep + 2 + (wSig / 2), y + 11.7, { align: 'center' });
+    doc.text('NOMBRE DEL REPORTANTE', m + (wRep / 2), y + 21.4, { align: 'center' });
+    doc.text('FIRMA', m + wRep + 2 + (wSig / 2), y + 21.4, { align: 'center' });
+
+    var anexos = [
+        { titulo: 'DESCRIPCION DEL EVENTO', dataUrl: fotosAnexo[0] },
+        { titulo: 'ACCION INMEDIATA', dataUrl: fotosAnexo[1] },
+        { titulo: 'RECOMENDACION', dataUrl: fotosAnexo[2] }
+    ].filter(a => !!a.dataUrl);
+
+    if (anexos.length > 0) {
+        doc.addPage('a4', 'p');
+        var ax = 12;
+        var aw = 186;
+        var ay = 12;
+        var cardGap = 7;
+        var cardH = 84;
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(70, 70, 70);
+        doc.text('ANEXO FOTOGRAFICO', 105, ay + 3, { align: 'center' });
+        doc.setTextColor(0, 0, 0);
+        ay += 8;
+
+        for (var ai = 0; ai < anexos.length; ai++) {
+            var cardY = ay + (ai * (cardH + cardGap));
+            doc.setDrawColor(120, 120, 120);
+            doc.rect(ax, cardY, aw, cardH);
+            doc.setFillColor(118, 118, 118);
+            doc.rect(ax, cardY, aw, 8, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont(undefined, 'bold');
+            doc.setFontSize(9);
+            doc.text(anexos[ai].titulo, ax + (aw / 2), cardY + 5.4, { align: 'center' });
+            doc.setTextColor(0, 0, 0);
+
+            var imgPadX = 4;
+            var imgPadY = 11;
+            var imgW = aw - (imgPadX * 2);
+            var imgH = cardH - imgPadY - 3;
+            drawImageContain(anexos[ai].dataUrl, ax + imgPadX, cardY + imgPadY, imgW, imgH);
+        }
+    }
 
     try {
         var blob = doc.output('blob');
@@ -310,6 +528,7 @@ function generarPDFReporte() {
         var iframe = document.getElementById('modal-pdf-iframe');
         var linkDescarga = document.getElementById('modal-pdf-descargar');
         var btnCerrar = document.getElementById('modal-pdf-cerrar');
+        var focusBackEl = openerEl || document.activeElement;
         if (modal && iframe) {
             if (window._pdfBlobUrl) URL.revokeObjectURL(window._pdfBlobUrl);
             window._pdfBlobUrl = url;
@@ -321,7 +540,14 @@ function generarPDFReporte() {
             modal.style.display = 'flex';
             modal.classList.add('modal-pdf-abierto');
             modal.setAttribute('aria-hidden', 'false');
+            if (btnCerrar && typeof btnCerrar.focus === 'function') {
+                setTimeout(() => btnCerrar.focus(), 0);
+            }
             function cerrarModalPdf() {
+                var activeEl = document.activeElement;
+                if (activeEl && modal.contains(activeEl) && typeof activeEl.blur === 'function') {
+                    activeEl.blur();
+                }
                 modal.style.display = 'none';
                 modal.classList.remove('modal-pdf-abierto');
                 modal.setAttribute('aria-hidden', 'true');
@@ -329,6 +555,9 @@ function generarPDFReporte() {
                 if (window._pdfBlobUrl) {
                     URL.revokeObjectURL(window._pdfBlobUrl);
                     window._pdfBlobUrl = null;
+                }
+                if (focusBackEl && typeof focusBackEl.focus === 'function') {
+                    setTimeout(() => focusBackEl.focus(), 0);
                 }
             }
             if (btnCerrar) btnCerrar.onclick = cerrarModalPdf;
@@ -359,12 +588,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const form = document.getElementById('seguridad-form');
     const btnPdf = document.getElementById('btn-ver-pdf');
+    const firmaFotoInput = document.getElementById('rep_firma_foto');
+    const firmaFotoNombre = document.getElementById('rep_firma_foto_nombre');
     if (btnPdf) {
-        btnPdf.addEventListener('click', () => generarPDFReporte());
+        btnPdf.addEventListener('click', (e) => { generarPDFReporte(e.currentTarget); });
+    }
+    if (firmaFotoInput) {
+        firmaFotoInput.addEventListener('change', () => {
+            const file = firmaFotoInput.files && firmaFotoInput.files[0];
+            if (!file) {
+                firmaImagenDataUrl = '';
+                if (firmaFotoNombre) firmaFotoNombre.textContent = 'Sin imagen';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = async () => {
+                const raw = typeof reader.result === 'string' ? reader.result : '';
+                firmaImagenDataUrl = await recortarFirmaDataUrl(raw);
+                if (firmaFotoNombre) firmaFotoNombre.textContent = file.name || 'Firma cargada';
+            };
+            reader.onerror = () => {
+                firmaImagenDataUrl = '';
+                if (firmaFotoNombre) firmaFotoNombre.textContent = 'Sin imagen';
+            };
+            reader.readAsDataURL(file);
+        });
     }
     if (form) {
         form.addEventListener('input', () => { window.formHasChanges = formTieneDatos(); });
         form.addEventListener('change', () => { window.formHasChanges = formTieneDatos(); });
+        form.addEventListener('reset', () => {
+            firmaImagenDataUrl = '';
+            if (firmaFotoNombre) firmaFotoNombre.textContent = 'Sin imagen';
+            if (firmaFotoInput) firmaFotoInput.value = '';
+        });
     }
 
     const sidebar = document.getElementById('sidebar');
