@@ -178,6 +178,14 @@ export function initReporteForm() {
         fechaInput.addEventListener('change', actualizarDisplayFecha);
         fechaInput.addEventListener('input', actualizarDisplayFecha);
     }
+    var fechaIcon = fechaWrap && fechaWrap.querySelector('.rep-fecha-icon');
+    if (fechaIcon && fechaInput) {
+        fechaIcon.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            fechaInput.click();
+        });
+    }
 
     const fotoNombreIds = ['rep_foto_nombre_descripcion', 'rep_foto_nombre_accion', 'rep_foto_nombre_recomendacion'];
     const fileInputIds = ['rep_foto_descripcion', 'rep_foto_accion', 'rep_foto_recomendacion'];
