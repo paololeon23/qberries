@@ -11,7 +11,8 @@ const assets = [
   "./librerias/sweetalert2.all.min.js",
   "./librerias/sweetalert2.min.css",
   "./logo.png",
-  "./logo2.png"
+  "./logo2.png",
+  "./icono.png"
 ];
 
 // Instalación y guardado de archivos en caché

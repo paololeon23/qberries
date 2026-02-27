@@ -1,544 +1,163 @@
 /**
- * Google Apps Script - MTTP Arándano
- * Recibe datos del formulario y los escribe en la hoja activa.
- * 52 columnas (FUNDO, OBSERVACION_FORMATO; sin TEMP_AMB_*).
+ * Code.gs - Reporte de Actos y/o Condiciones Inseguras (QBerries)
+ * Solo POST. Recibe JSON del formulario, escribe una fila en la hoja y guarda fotos en Drive.
  *
- * ANTI-DUPLICADOS (evita réplicas por fallas de internet o reintentos):
- * 1) Idempotencia por UID: si el mismo envío (uid) ya se procesó, no se inserta de nuevo.
- * 2) Clave de fila: cada fila existente tiene una clave normalizada; si la fila ya está, no se inserta.
- * Así, aunque el mismo registro se envíe varias veces, solo se guarda una vez.
+ * Desplegar como "Aplicación web": Ejecutar como "Yo", Quién tiene acceso "Cualquier usuario".
+ * POST con Content-Type: application/json o text/plain; body = JSON.
  *
- * --- LÓGICA PACKING (columnas 53+) ---
- * GET con fecha + ensayo_numero → devuelve data.fila = número de fila en la hoja (ej. 7).
- * POST con mode:'packing' + fecha + ensayo_numero + packingRows → escribe en ESA fila desde col 53 (tras 52 cols de registro).
- * Orden: col 53 = HORA_RECEPCION, 54 = N_VIAJE, 55+ = packing fila 1, fila 2, ... (41 valores por fila).
+ * Columnas de la hoja (orden fijo):
+ * código, versión, aprobación, origen, nombre_empresa, fecha, lugar_ocurrencia, nombre_persona,
+ * seguridad_salud, medio_ambiente, causa,
+ * descripcion_evento_texto, descripcion_evento_foto, accion_inmediata_texto, accion_inmediata_foto,
+ * recomendacion_texto, recomendacion_foto, nombre_reportante, firma,
+ * fecha_hora_envio, estado
  */
+
+var CONFIG = {
+  MAX_BODY_LENGTH: 15000000,
+  MAX_STRING_LENGTH: 5000,
+  MAX_PHOTO_BASE64_LENGTH: 8000000,
+  // Usar la primera hoja del libro (p. ej. "BERRIES"). Si quieres otra, pon su nombre: 'Reportes'
+  SHEET_NAME: 'BERRIES',
+  FOLDER_NAME: 'Reportes QBerries Fotos'
+};
+
+/** Encabezados de la hoja (celdas a llenar) */
+var HEADERS = [
+  'código', 'versión', 'aprobación', 'origen', 'nombre_empresa', 'fecha', 'lugar_ocurrencia', 'nombre_persona',
+  'seguridad_salud', 'medio_ambiente', 'causa',
+  'descripcion_evento_texto', 'descripcion_evento_foto',
+  'accion_inmediata_texto', 'accion_inmediata_foto',
+  'recomendacion_texto', 'recomendacion_foto',
+  'nombre_reportante', 'firma',
+  'fecha_hora_envio', 'estado'
+];
+
 function doPost(e) {
-  if (!e || !e.postData || !e.postData.contents) {
-    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Sin datos POST" }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(10000)) {
-    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Servidor ocupado, reintenta" }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
+  var output = ContentService.createTextOutput().setMimeType(ContentService.MimeType.JSON);
   try {
-    // En Web App no hay "hoja activa" del usuario; usar la primera hoja del libro para que siempre escribamos en la misma.
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-    const data = JSON.parse(e.postData.contents);
-
-    // POST PACKING: misma fila que fecha+ensayo, desde columna 53 (registro = 52 cols)
-    if (data.mode === 'packing') {
-      var packingResult = doPostPacking(sheet, data);
-      lock.releaseLock();
-      return ContentService.createTextOutput(JSON.stringify(packingResult))
-        .setMimeType(ContentService.MimeType.JSON)
-        .setHeader('Access-Control-Allow-Origin', '*');
+    if (!e || !e.postData || !e.postData.contents) {
+      output.setContent(JSON.stringify({ ok: false, error: 'Sin datos POST' }));
+      return output;
     }
-
-    const rows = data.rows || [];
-    const uid = data.uid || null;
-
-    // Log para depuración (visible en Ejecuciones de Apps Script)
-    console.log("[doPost] Recibidas " + (rows ? rows.length : 0) + " filas. Resumen: " + (rows.length ? rows.map(function(r, i) { return "f" + (i + 1) + " ensayo=" + (r[12]) + " n_clamshell=" + (r[14]); }).join(", ") : "ninguna"));
-
-    if (rows.length === 0) {
-      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Sin filas" }))
-        .setMimeType(ContentService.MimeType.JSON);
+    var data = JSON.parse(e.postData.contents);
+    if (typeof data !== 'object' || data === null) {
+      output.setContent(JSON.stringify({ ok: false, error: 'JSON inválido' }));
+      return output;
     }
-
-    // ==== IDEMPOTENCIA POR UID ====
-    // Si este mismo envío (uid) ya se procesó, no insertar de nuevo (evita réplicas por reintentos de red)
-    if (uid) {
-      var props = PropertiesService.getScriptProperties();
-      var keyUid = "mtpp_uid_" + uid;
-      if (props.getProperty(keyUid) === "1") {
-        lock.releaseLock();
-        return ContentService.createTextOutput(JSON.stringify({
-          ok: true,
-          received: rows.length,
-          inserted: 0,
-          duplicate: true,
-          message: "Registro ya procesado anteriormente (evitado duplicado)"
-        })).setMimeType(ContentService.MimeType.JSON);
-      }
-    }
-
-    if (sheet.getLastRow() === 0) {
-      const headers = [
-        "FECHA", "RESPONSABLE", "GUIA_REMISION", "VARIEDAD", "PLACA_VEHICULO", "HORA_INICIO_GENERAL", "DIAS_PRECOSECHA",
-        "TRAZ_ETAPA", "TRAZ_CAMPO", "TRAZ_LIBRE", "FUNDO", "OBSERVACION_FORMATO", "ENSAYO_NUMERO", "ENSAYO_NOMBRE", "N_CLAMSHELL", "N_JARRA",
-        "PESO_1", "PESO_2", "LLEGADA_ACOPIO", "DESPACHO_ACOPIO", "INICIO_C", "TERMINO_C", "MIN_C", "INICIO_T", "TERMINO_T", "MIN_T",
-        "TEMP_MUE_INICIO_AMB", "TEMP_MUE_INICIO_PUL", "TEMP_MUE_TERMINO_AMB", "TEMP_MUE_TERMINO_PUL",
-        "TEMP_MUE_LLEGADA_AMB", "TEMP_MUE_LLEGADA_PUL", "TEMP_MUE_DESPACHO_AMB", "TEMP_MUE_DESPACHO_PUL",
-        "TIEMPO_INICIO_COSECHA", "TIEMPO_PERDIDA_PESO", "TIEMPO_TERMINO_COSECHA", "TIEMPO_LLEGADA_ACOPIO", "TIEMPO_DESPACHO_ACOPIO",
-        "HUMEDAD_INICIO", "HUMEDAD_TERMINO", "HUMEDAD_LLEGADA", "HUMEDAD_DESPACHO",
-        "PRESION_AMB_INICIO", "PRESION_AMB_TERMINO", "PRESION_AMB_LLEGADA", "PRESION_AMB_DESPACHO",
-        "PRESION_FRUTA_INICIO", "PRESION_FRUTA_TERMINO", "PRESION_FRUTA_LLEGADA", "PRESION_FRUTA_DESPACHO",
-        "OBSERVACION"
-      ];
-      sheet.appendRow(headers);
-    }
-
-    const NUM_COLS = 52;
-
-    // Normalizar valor para la clave (hoja devuelve Date/number, el POST envía string)
-    function normalizarParaClave(v) {
-      if (v === null || v === undefined) return "";
-      if (v instanceof Date) return Utilities.formatDate(v, "America/Santiago", "yyyy-MM-dd");
-      var s = String(v).trim();
-      return s;
-    }
-
-    function buildKey(row) {
-      return row.slice(0, NUM_COLS).map(normalizarParaClave).join("||");
-    }
-
-    // Solo evitamos duplicados por clave completa de fila (misma fecha+ensayo+n_clamshell+datos). Permitimos varias filas por (fecha, ensayo).
-    var lastRow = sheet.getLastRow();
-    var existingKeys = {};
-    if (lastRow >= 2) {
-      var existingValues = sheet.getRange(2, 1, lastRow - 1, NUM_COLS).getValues();
-      existingValues.forEach(function(r) {
-        var key = buildKey(r);
-        if (key) existingKeys[key] = true;
-      });
-    }
-
-    // Escribir todo como string para que Sheets no interprete números (ej. 1) como hora (0:00)
-    function celdaAString(cell) {
-      if (cell === null || cell === undefined) return "";
-      return String(cell);
-    }
-    var nuevasFilas = [];
-    rows.forEach(function(row) {
-      while (row.length < NUM_COLS) row.push("");
-      var fila = row.slice(0, NUM_COLS).map(celdaAString);
-      var key = buildKey(fila);
-      if (existingKeys[key]) return;
-      nuevasFilas.push(fila);
-      existingKeys[key] = true;
-    });
-
-    // Re-leer la hoja justo antes de escribir (por si otro request escribió mientras esperaba el lock)
-    lastRow = sheet.getLastRow();
-    existingKeys = {};
-    if (lastRow >= 2) {
-      existingValues = sheet.getRange(2, 1, lastRow - 1, NUM_COLS).getValues();
-      existingValues.forEach(function(r) {
-        var key = buildKey(r);
-        if (key) existingKeys[key] = true;
-      });
-      var filtradas = [];
-      nuevasFilas.forEach(function(fila) {
-        var key = buildKey(fila);
-        if (existingKeys[key]) return;
-        filtradas.push(fila);
-        existingKeys[key] = true;
-      });
-      nuevasFilas = filtradas;
-    }
-
-    if (nuevasFilas.length > 0) {
-      var startRow = sheet.getLastRow() + 1;
-      var numRows = nuevasFilas.length;
-      sheet.getRange(startRow, 1, numRows, NUM_COLS).setValues(nuevasFilas);
-      console.log("[doPost] Insertadas " + numRows + " filas desde fila " + startRow);
-    }
-
-    if (nuevasFilas.length === 0 && rows.length > 0) {
-      return ContentService.createTextOutput(JSON.stringify({
-        ok: false,
-        error: "No se insertó ninguna fila: todas coinciden con registros ya existentes (clave duplicada).",
-        duplicate: true
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-
-    if (uid) {
-      PropertiesService.getScriptProperties().setProperty("mtpp_uid_" + uid, "1");
-      limpiarUidsAntiguos();
-    }
-
-    return ContentService.createTextOutput(JSON.stringify({
-      ok: true,
-      received: rows.length,
-      inserted: nuevasFilas.length
-    })).setMimeType(ContentService.MimeType.JSON);
-
-  } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-// Mantener solo los últimos ~500 UIDs para no llenar ScriptProperties
-function limpiarUidsAntiguos() {
-  try {
-    var props = PropertiesService.getScriptProperties();
-    var all = props.getProperties();
-    var keys = [];
-    for (var k in all) {
-      if (k.indexOf("mtpp_uid_") === 0) keys.push(k);
-    }
-    if (keys.length <= 500) return;
-    keys.sort();
-    var eliminar = keys.length - 500;
-    for (var i = 0; i < eliminar; i++) {
-      props.deleteProperty(keys[i]);
-    }
-  } catch (e) {}
-}
-
-/** Normaliza fecha a yyyy-MM-dd para comparar con el front (igual que doGet). */
-function formatFechaPacking(val) {
-  if (val === null || val === undefined || val === '') return '';
-  if (val instanceof Date) return Utilities.formatDate(val, "GMT", "yyyy-MM-dd");
-  var s = String(val).trim();
-  if (!s) return '';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  var d = null;
-  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
-    var parts = s.split('/');
-    var day = parseInt(parts[0], 10);
-    var month = parseInt(parts[1], 10) - 1;
-    var year = parseInt(parts[2], 10);
-    if (year >= 1900 && year <= 2100 && month >= 0 && month <= 11 && day >= 1 && day <= 31) d = new Date(year, month, day);
-  } else if (s.indexOf('GMT') >= 0 || /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s/.test(s)) d = new Date(s);
-  if (d && !isNaN(d.getTime())) return Utilities.formatDate(d, "GMT", "yyyy-MM-dd");
-  return s;
-}
-
-/**
- * Nombres de columnas packing (en base a los id del formulario). 41 nombres por fila lógica.
- * Orden: p1(5), p2(5), p3(10), p4-humedad(5), p5-presion_amb(5), p6-presion_fruta(5), p7-deficit(5), p8(1).
- */
-function getPackingHeaderNamesPerRow() {
-  return [
-    'RECEPCION', 'INGRESO_GASIFICADO', 'SALIDA_GASIFICADO', 'INGRESO_PREFRIO', 'SALIDA_PREFRIO',
-    'PESO_RECEPCION', 'PESO_INGRESO_GASIFICADO', 'PESO_SALIDA_GASIFICADO', 'PESO_INGRESO_PREFRIO', 'PESO_SALIDA_PREFRIO',
-    'T_AMB_RECEP', 'T_PULP_RECEP', 'T_AMB_ING', 'T_PULP_ING', 'T_AMB_SAL', 'T_PULP_SAL', 'T_AMB_PRE_IN', 'T_PULP_PRE_IN', 'T_AMB_PRE_OUT', 'T_PULP_PRE_OUT',
-    'HUMEDAD_RECEPCION', 'HUMEDAD_INGRESO_GASIFICADO', 'HUMEDAD_SALIDA_GASIFICADO', 'HUMEDAD_INGRESO_PREFRIO', 'HUMEDAD_SALIDA_PREFRIO',
-    'PRESION_AMB_RECEPCION', 'PRESION_AMB_INGRESO_GASIFICADO', 'PRESION_AMB_SALIDA_GASIFICADO', 'PRESION_AMB_INGRESO_PREFRIO', 'PRESION_AMB_SALIDA_PREFRIO',
-    'PRESION_FRUTA_RECEPCION', 'PRESION_FRUTA_INGRESO_GASIFICADO', 'PRESION_FRUTA_SALIDA_GASIFICADO', 'PRESION_FRUTA_INGRESO_PREFRIO', 'PRESION_FRUTA_SALIDA_PREFRIO',
-    'DEFICIT_RECEPCION', 'DEFICIT_INGRESO_GASIFICADO', 'DEFICIT_SALIDA_GASIFICADO', 'DEFICIT_INGRESO_PREFRIO', 'DEFICIT_SALIDA_PREFRIO',
-    'OBSERVACION'
-  ];
-}
-
-/** Devuelve el array de encabezados para columnas 53+: HORA_RECEPCION, N_VIAJE, luego por cada fila los 41 nombres con sufijo _1, _2, ... */
-function getPackingHeaderNames(numFilas) {
-  var out = ['HORA_RECEPCION', 'N_VIAJE'];
-  var base = getPackingHeaderNamesPerRow();
-  for (var f = 1; f <= numFilas; f++) {
-    var suffix = '_' + f;
-    for (var i = 0; i < base.length; i++) out.push(base[i] + suffix);
-  }
-  return out;
-}
-
-/**
- * POST Packing: recibe mode:'packing', fecha, ensayo_numero, hora_recepcion, n_viaje, packingRows.
- * Localiza TODAS las filas de la hoja para esa fecha+ensayo y escribe UNA fila de packing por cada fila de hoja (col 53+).
- * packingRows[0] → primera fila del ensayo, packingRows[1] → segunda, etc. (cada una: 41 valores + HORA_RECEPCION + N_VIAJE = 43 cols).
- */
-function doPostPacking(sheet, data) {
-  try {
-    var fecha = (data.fecha != null && data.fecha !== '') ? String(data.fecha).trim() : '';
-    var ensayoNumero = (data.ensayo_numero != null && data.ensayo_numero !== '') ? String(data.ensayo_numero).trim() : '';
-    var horaRecepcion = (data.hora_recepcion != null && data.hora_recepcion !== '') ? String(data.hora_recepcion).trim() : '';
-    var nViaje = (data.n_viaje != null && data.n_viaje !== '') ? String(data.n_viaje).trim() : '';
-    var packingRows = data.packingRows || [];
-
-    if (!fecha || !ensayoNumero) {
-      return { ok: false, error: 'Faltan fecha o ensayo_numero' };
-    }
-
-    var lastRow = sheet.getLastRow();
-    if (lastRow < 2) {
-      return { ok: false, error: 'No hay datos en la hoja' };
-    }
-
-    // Obtener TODAS las filas de la hoja que coinciden con fecha+ensayo (col M = índice 12)
-    var dataRows = sheet.getRange(2, 1, lastRow - 1, 13).getValues();
-    var rowIndices = [];
-    for (var k = 0; k < dataRows.length; k++) {
-      var r = dataRows[k];
-      var rowFechaStr = formatFechaPacking(r[0]);
-      var rowEn = (r[12] != null && r[12] !== '') ? String(r[12]).trim() : '';
-      if (rowFechaStr === fecha && rowEn === ensayoNumero) {
-        rowIndices.push(2 + k);
-      }
-    }
-    if (rowIndices.length === 0) {
-      return { ok: false, error: 'No se encontró ninguna fila para esa fecha y ensayo' };
-    }
-
-    var primeraFila = rowIndices[0];
-    var celdaPacking = sheet.getRange(primeraFila, 53).getValue();
-    if (celdaPacking != null && String(celdaPacking).trim() !== '') {
-      return { ok: false, error: 'Ya existe información de packing para esta fecha y ensayo. No se puede sobrescribir.' };
-    }
-
-    var startCol = 53;
-    var COLS_POR_FILA = 2 + 41; // HORA_RECEPCION, N_VIAJE + 41 valores por fila lógica
-    var baseHeaders = ['HORA_RECEPCION', 'N_VIAJE'].concat(getPackingHeaderNamesPerRow());
-
-    // Escribir cada packing row en la fila de hoja correspondiente (una fila de hoja por cada packing row)
-    for (var i = 0; i < packingRows.length && i < rowIndices.length; i++) {
-      var row = packingRows[i];
-      var filaHoja = rowIndices[i];
-      var valores = [horaRecepcion, nViaje];
-      if (Array.isArray(row)) {
-        for (var j = 0; j < 41; j++) {
-          valores.push((j < row.length && row[j] != null && row[j] !== '') ? row[j] : '');
-        }
-      } else {
-        for (var j = 0; j < 41; j++) valores.push('');
-      }
-      sheet.getRange(filaHoja, startCol, 1, COLS_POR_FILA).setValues([valores]);
-    }
-
-    // Encabezados en fila 1 (una sola vez; 43 columnas)
-    sheet.getRange(1, startCol, 1, baseHeaders.length).setValues([baseHeaders]);
-
-    return {
-      ok: true,
-      message: 'Packing guardado en ' + Math.min(packingRows.length, rowIndices.length) + ' fila(s)',
-      filasEscritas: Math.min(packingRows.length, rowIndices.length),
-      packingMuestras: packingRows.length
-    };
+    var sheet = getOrCreateSheet();
+    var isnInter = 'QB-' + Utilities.getUuid().slice(0, 8).toUpperCase();
+    var row = buildRow(data, isnInter);
+    sheet.appendRow(row);
+    output.setContent(JSON.stringify({ ok: true, message: 'Guardado correctamente' }));
+    return output;
   } catch (err) {
-    return { ok: false, error: err.toString() };
+    Logger.log('doPost error: ' + err.toString());
+    output.setContent(JSON.stringify({ ok: false, error: err.toString() }));
+    return output;
   }
 }
 
 /**
- * GET: dos parámetros (fecha + ensayo_numero) para sacar la info y llenar el front.
- * - fecha: yyyy-mm-dd (ej. 2026-02-17)
- * - ensayo_numero: "1", "2", "3" o "4" (columna M, índice 12)
- * Devuelve: { ok: true, data: { ... } } y fechas siempre en formato ["2026-02-17"].
- *
- * IMPORTANTE: Después de editar este archivo, en Apps Script ve a Implementar > Gestionar implementaciones >
- * Editar la implementación activa > Versión: "Nueva versión" > Implementar. Si no, la Web App sigue con la versión vieja.
- *
- * Otros modos: sin params → fechas; solo fecha → ensayos.
+ * Construye la fila en el orden de HEADERS.
+ * Fotos en base64 se guardan en Drive y en la celda se escribe el enlace.
  */
-function doGet(e) {
-  var result = { ok: false, data: null, error: null, fechas: null, ensayos: null };
+function buildRow(data, isnInter) {
+  var n = HEADERS.length;
+  var row = [];
+  for (var i = 0; i < n; i++) row.push('');
+
+  row[0] = sanitize(val(data.rep_codigo));
+  row[1] = sanitize(val(data.rep_version));
+  row[2] = sanitize(val(data.rep_aprobacion));
+  row[3] = sanitize(val(data.rep_origen));
+  row[4] = sanitize(val(data.rep_area));
+  row[5] = sanitize(val(data.rep_fecha));
+  row[6] = sanitize(val(data.rep_lugar));
+  row[7] = sanitize(val(data.rep_persona));
+  row[8] = sanitize(val(data.rep_clasificacion_seguridad));
+  row[9] = sanitize(val(data.rep_medio_ambiente));
+  row[10] = sanitize(val(data.rep_causa));
+  row[11] = sanitize(val(data.rep_descripcion));
+  row[13] = sanitize(val(data.rep_accion));
+  row[15] = sanitize(val(data.rep_recomendacion));
+  row[17] = sanitize(val(data.rep_reportante));
+  row[18] = sanitize(val(data.rep_firma));
+
+  var now = new Date();
+  var tz = Session.getScriptTimeZone() || 'UTC';
+  row[19] = Utilities.formatDate(now, tz, 'yyyy-MM-dd HH:mm:ss');
+  row[20] = (data.envio_con_inter === true || data.envio_con_inter === 'true') ? 'CON INTER' : 'SIN INTER';
+
+  var fotoDesc = data.rep_foto_descripcion_base64;
+  var fotoAccion = data.rep_foto_accion_base64;
+  var fotoRecom = data.rep_foto_recomendacion_base64;
+  if (fotoDesc && typeof fotoDesc === 'string' && fotoDesc.length > 0) {
+    row[12] = savePhotoToDrive(fotoDesc, isnInter, 'descripcion') || '';
+  }
+  if (fotoAccion && typeof fotoAccion === 'string' && fotoAccion.length > 0) {
+    row[14] = savePhotoToDrive(fotoAccion, isnInter, 'accion') || '';
+  }
+  if (fotoRecom && typeof fotoRecom === 'string' && fotoRecom.length > 0) {
+    row[16] = savePhotoToDrive(fotoRecom, isnInter, 'recomendacion') || '';
+  }
+
+  return row;
+}
+
+function val(v) {
+  if (v === undefined || v === null) return '';
+  if (typeof v === 'boolean') return v ? 'Sí' : 'No';
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
+function sanitize(str) {
+  if (str.length > CONFIG.MAX_STRING_LENGTH) str = str.slice(0, CONFIG.MAX_STRING_LENGTH);
+  return str.replace(/[\u0000-\u001F\u007F-\u009F]/g, '').trim();
+}
+
+function savePhotoToDrive(base64Data, isnInter, suffix) {
   try {
-    var params = e && e.parameter ? e.parameter : {};
-    var fechaParam = (params.fecha || '').toString().trim();
-    var ensayoNumero = (params.ensayo_numero || '').toString().trim();
-    var callback = (params.callback || '').toString().trim();
-    if (!/^[a-zA-Z0-9_]+$/.test(callback)) callback = '';
-
-    function returnOutput(obj) {
-      if (callback) return outputJsonp(obj, callback);
-      return outputJson(obj);
+    var mime = 'image/jpeg';
+    var ext = 'jpg';
+    var base64 = base64Data;
+    if (base64.indexOf('base64,') !== -1) {
+      var prefix = base64.split('base64,')[0].toLowerCase();
+      if (prefix.indexOf('image/png') !== -1) { mime = 'image/png'; ext = 'png'; }
+      base64 = base64.split('base64,')[1];
     }
+    if (!base64 || base64.length > CONFIG.MAX_PHOTO_BASE64_LENGTH) return '';
 
-    // Misma hoja que doPost (primera hoja) para que el conteo de filas coincida con la hoja donde se escriben los datos
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-    var lastRow = sheet.getLastRow();
-    if (lastRow < 2) {
-      result.error = 'No hay datos en la hoja';
-      return returnOutput(result);
-    }
-
-    var data = sheet.getRange(2, 1, lastRow, 14).getValues();
-
-    /**
-     * SIEMPRE devuelve yyyy-MM-dd (nunca "Tue Feb 17 2026 GMT-0500..."). Así Netlify recibe fechas cortas.
-     * Acepta: Date, string yyyy-MM-dd, dd/MM/yyyy, o string largo tipo "Tue Feb 17 2026 00:00:00 GMT-0500".
-     */
-    function formatFecha(val) {
-      if (val === null || val === undefined || val === '') return '';
-      if (val instanceof Date) return Utilities.formatDate(val, "GMT", "yyyy-MM-dd");
-      var s = String(val).trim();
-      if (!s) return '';
-      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-      var d = null;
-      if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
-        var parts = s.split('/');
-        var day = parseInt(parts[0], 10);
-        var month = parseInt(parts[1], 10) - 1;
-        var year = parseInt(parts[2], 10);
-        if (year >= 1900 && year <= 2100 && month >= 0 && month <= 11 && day >= 1 && day <= 31) {
-          d = new Date(year, month, day);
-        }
-      } else if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(s)) {
-        var parts2 = s.split('-');
-        day = parseInt(parts2[0], 10);
-        month = parseInt(parts2[1], 10) - 1;
-        year = parseInt(parts2[2], 10);
-        if (year >= 1900 && year <= 2100 && month >= 0 && month <= 11 && day >= 1 && day <= 31) {
-          d = new Date(year, month, day);
-        }
-      } else if (s.indexOf('GMT') >= 0 || /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s/.test(s)) {
-        d = new Date(s);
-      }
-      if (d && !isNaN(d.getTime())) return Utilities.formatDate(d, "GMT", "yyyy-MM-dd");
-      return s;
-    }
-    // Normalizar fecha del request a yyyy-MM-dd para comparar con la hoja
-    var fecha = (fechaParam && formatFecha(fechaParam)) ? formatFecha(fechaParam) : fechaParam;
-
-    // 0) Listado de todos los registros (fecha + ensayo) para historial y prevención — una petición, respuesta ligera
-    var listadoReg = (params.listado_registrados || '').toString().trim() === '1';
-    if (listadoReg) {
-      var seen = {};
-      var registrados = [];
-      for (var i = 0; i < data.length; i++) {
-        var r = data[i];
-        var f = formatFecha(r[0]);
-        var en = r[12];
-        var enStr = (en !== null && en !== undefined && en !== '') ? (Number(en) === Math.floor(Number(en)) ? String(Number(en)) : String(en).trim()) : '';
-        var nom = (r[13] != null && r[13] !== undefined && r[13] !== '') ? String(r[13]).trim() : ('Ensayo ' + enStr);
-        if (!f || enStr === '') continue;
-        var key = f + '|' + enStr;
-        if (seen[key]) continue;
-        seen[key] = true;
-        registrados.push({ fecha: f, ensayo_numero: enStr, ensayo_nombre: nom });
-      }
-      result.ok = true;
-      result.registrados = registrados;
-      return returnOutput(result);
-    }
-
-    // 1) Listar fechas con datos (sin fecha ni ensayo_numero)
-    if (!fecha && !ensayoNumero) {
-      var fechasSet = {};
-      for (var i = 0; i < data.length; i++) {
-        var f = formatFecha(data[i][0]);
-        if (f) fechasSet[f] = true;
-      }
-      var fechasList = Object.keys(fechasSet).sort().reverse();
-      result.ok = true;
-      result.fechas = fechasList;
-      return returnOutput(result);
-    }
-
-    // 2) Listar ensayos para una fecha (solo fecha) — devuelve números y si tienen packing (col 53)
-    if (fecha && !ensayoNumero) {
-      var packingCol = (lastRow >= 2) ? sheet.getRange(2, 53, lastRow, 53).getValues() : [];
-      var ensayosInfo = {};
-      for (var j = 0; j < data.length; j++) {
-        var rowFechaStr = formatFecha(data[j][0]);
-        if (rowFechaStr === fecha) {
-          var en = String(data[j][12] || '').trim();
-          if (en) {
-            if (!ensayosInfo[en]) ensayosInfo[en] = { tienePacking: false };
-            if (packingCol[j] && packingCol[j][0] != null && String(packingCol[j][0]).trim() !== '')
-              ensayosInfo[en].tienePacking = true;
-          }
-        }
-      }
-      var ensayosList = Object.keys(ensayosInfo).sort();
-      result.ok = true;
-      result.ensayos = ensayosList;
-      result.ensayosConPacking = {};
-      ensayosList.forEach(function (e) { result.ensayosConPacking[e] = ensayosInfo[e].tienePacking; });
-      return returnOutput(result);
-    }
-
-    // 3) Comprobar si ya existe registro para esta fecha + ensayo_numero (col M = índice 12)
-    var existeRegistro = (params.existe_registro || '').toString().trim() === '1';
-    if (existeRegistro && fecha && ensayoNumero) {
-      var enNorm = ensayoNumero;
-      var numEn = Number(ensayoNumero);
-      if (!isNaN(numEn) && numEn === Math.floor(numEn)) enNorm = String(numEn);
-      for (var i = 0; i < data.length; i++) {
-        var r = data[i];
-        var rowFechaStr = formatFecha(r[0]);
-        var rowEn = r[12];
-        var rowEnStr = (rowEn !== null && rowEn !== undefined) ? (Number(rowEn) === Math.floor(Number(rowEn)) ? String(Number(rowEn)) : String(rowEn).trim()) : '';
-        if (rowFechaStr === fecha && rowEnStr === enNorm) {
-          result.ok = true;
-          result.existe = true;
-          result.ensayo_numero = enNorm;
-          return returnOutput(result);
-        }
-      }
-      result.ok = true;
-      result.existe = false;
-      return returnOutput(result);
-    }
-
-    // 4) Obtener fila por fecha + ensayo_numero (col M = índice 12: 1, 2, 3, 4) y numFilas para Packing
-    if (!fecha || !ensayoNumero) {
-      result.error = 'Faltan parámetros: fecha y ensayo_numero';
-      return returnOutput(result);
-    }
-
-    // Normalizar ensayo_numero para comparar igual que en existe_registro (evitar contar de más por "1" vs 1)
-    var enNorm = (ensayoNumero !== null && ensayoNumero !== undefined && String(ensayoNumero).trim() !== '') ? (function () {
-      var n = Number(ensayoNumero);
-      return (!isNaN(n) && n === Math.floor(n)) ? String(n) : String(ensayoNumero).trim();
-    })() : '';
-
-    var row = null;
-    var filaEnSheet = null;
-    var numFilas = 0;
-    for (var k = 0; k < data.length; k++) {
-      var r = data[k];
-      var rowFechaStr = formatFecha(r[0]);
-      var rowEn = r[12];
-      var rowEnStr = (rowEn !== null && rowEn !== undefined && rowEn !== '') ? (function () {
-        var n = Number(rowEn);
-        return (!isNaN(n) && n === Math.floor(n)) ? String(n) : String(rowEn).trim();
-      })() : '';
-      if (rowFechaStr === fecha && rowEnStr === enNorm) {
-        if (row == null) {
-          row = r;
-          filaEnSheet = 2 + k;
-        }
-        numFilas++;
-      }
-    }
-
-    if (!row) {
-      result.error = 'No hay registro para esa fecha y ensayo';
-      return returnOutput(result);
-    }
-
-    var tienePacking = false;
-    try {
-      var packingVal = sheet.getRange(filaEnSheet, 53).getValue();
-      tienePacking = (packingVal != null && String(packingVal).trim() !== '');
-    } catch (_) {}
-
-    result.ok = true;
-    result.data = {
-      fila: filaEnSheet,
-      numFilas: numFilas,
-      tienePacking: tienePacking,
-      ENSAYO_NUMERO: row[12],
-      TRAZ_ETAPA: row[7],
-      TRAZ_CAMPO: row[8],
-      TRAZ_LIBRE: row[9],
-      VARIEDAD: row[3],
-      PLACA_VEHICULO: row[4],
-      GUIA_REMISION: row[2]
-    };
-    return returnOutput(result);
-  } catch (err) {
-    result.error = err.toString();
-    return returnOutput(result);
+    var blob = Utilities.newBlob(Utilities.base64Decode(base64), mime, isnInter + '_' + suffix + '.' + ext);
+    var folder = getOrCreateFotoFolder();
+    var file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return file.getUrl();
+  } catch (e) {
+    Logger.log('savePhotoToDrive error: ' + e.toString());
+    return '';
   }
 }
 
-function outputJson(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
+function getOrCreateFotoFolder() {
+  var iter = DriveApp.getRootFolder().getFoldersByName(CONFIG.FOLDER_NAME);
+  if (iter.hasNext()) return iter.next();
+  return DriveApp.getRootFolder().createFolder(CONFIG.FOLDER_NAME);
 }
 
-/** Respuesta JSONP para evitar CORS cuando el front llama con ?callback=nombre */
-function outputJsonp(obj, callbackName) {
-  var body = callbackName + '(' + JSON.stringify(obj) + ')';
-  return ContentService.createTextOutput(body).setMimeType(ContentService.MimeType.JAVASCRIPT);
+function getOrCreateSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.getSheets()[0];
+  }
+  if (!sheet) {
+    sheet = ss.insertSheet(CONFIG.SHEET_NAME);
+  }
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(HEADERS);
+    sheet.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold').setBackground('#27ae60').setFontColor('#fff');
+  }
+  return sheet;
 }

@@ -1,7 +1,7 @@
 {
-  "name": "MTTP Arándano - Agrovision",
-  "short_name": "MTTP",
-  "description": "Registro de Cosecha y Tiempos en Campo",
+  "name": "Reporte QBerries - Actos y Condiciones Inseguras",
+  "short_name": "QBerries",
+  "description": "Reporte de Actos y/o Condiciones Inseguras",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
