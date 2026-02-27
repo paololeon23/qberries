@@ -5,6 +5,9 @@
  */
 import { updateUI, initReporteForm, getHistorialEntries, enviarPendientes } from './network.js';
 let firmaImagenDataUrl = '';
+let bloquearAperturaPdfHasta = 0;
+let modalPdfAbierto = false;
+let generandoPdf = false;
 
 // Estado de conexión y contador de pendientes
                         updateUI();
@@ -91,31 +94,12 @@ function getVal(id) {
 }
 
 async function generarPDFReporte(openerEl) {
-    const hasSwal = typeof Swal !== 'undefined';
-    const hasPhotoForPdf = ['rep_foto_descripcion', 'rep_foto_accion', 'rep_foto_recomendacion']
-        .some(id => {
-            const el = document.getElementById(id);
-            return !!(el && el.files && el.files[0]);
-        });
-    if (hasSwal) {
-        Swal.fire({
-            title: 'Espere un momento',
-            text: hasPhotoForPdf
-                ? 'Procesando calidad de imagen para el PDF. Por favor espere...'
-                : 'Generando PDF. Por favor espere...',
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            showConfirmButton: false,
-            didOpen: () => { Swal.showLoading(); }
-        });
-    }
-    function cerrarAlertaPdf() {
-        if (hasSwal && Swal.isVisible()) Swal.close();
-    }
+    if (generandoPdf || modalPdfAbierto) return;
+    generandoPdf = true;
 
     var JsPDF = window.jspdf && window.jspdf.jsPDF;
     if (!JsPDF) {
-        cerrarAlertaPdf();
+        generandoPdf = false;
         if (typeof Swal !== 'undefined') Swal.fire({ title: 'Error', text: 'No se pudo cargar la librería PDF.', icon: 'error', confirmButtonColor: '#27ae60' });
         else alert('No se pudo cargar la librería PDF.');
         return;
@@ -553,7 +537,6 @@ async function generarPDFReporte(openerEl) {
         var btnCerrar = document.getElementById('modal-pdf-cerrar');
         var focusBackEl = openerEl || document.activeElement;
         if (modal && iframe) {
-            cerrarAlertaPdf();
             if (window._pdfBlobUrl) URL.revokeObjectURL(window._pdfBlobUrl);
             window._pdfBlobUrl = url;
             iframe.src = url + '#page=1&zoom=page-width';
@@ -564,10 +547,13 @@ async function generarPDFReporte(openerEl) {
             modal.style.display = 'flex';
             modal.classList.add('modal-pdf-abierto');
             modal.setAttribute('aria-hidden', 'false');
+            modalPdfAbierto = true;
+            generandoPdf = false;
             if (btnCerrar && typeof btnCerrar.focus === 'function') {
                 setTimeout(() => btnCerrar.focus(), 0);
             }
             function cerrarModalPdf() {
+                bloquearAperturaPdfHasta = Date.now() + 900;
                 var activeEl = document.activeElement;
                 if (activeEl && modal.contains(activeEl) && typeof activeEl.blur === 'function') {
                     activeEl.blur();
@@ -575,6 +561,7 @@ async function generarPDFReporte(openerEl) {
                 modal.style.display = 'none';
                 modal.classList.remove('modal-pdf-abierto');
                 modal.setAttribute('aria-hidden', 'true');
+                modalPdfAbierto = false;
                 iframe.src = 'about:blank';
                 if (window._pdfBlobUrl) {
                     URL.revokeObjectURL(window._pdfBlobUrl);
@@ -584,14 +571,22 @@ async function generarPDFReporte(openerEl) {
                     setTimeout(() => focusBackEl.focus(), 0);
                 }
             }
-            if (btnCerrar) btnCerrar.onclick = cerrarModalPdf;
+            if (btnCerrar) {
+                btnCerrar.onclick = function (e) {
+                    if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                    cerrarModalPdf();
+                };
+            }
             modal.onclick = function (e) { if (e.target === modal) cerrarModalPdf(); };
         } else {
-            cerrarAlertaPdf();
+            generandoPdf = false;
             window.open(URL.createObjectURL(blob), '_blank');
         }
     } catch (e) {
-        cerrarAlertaPdf();
+        generandoPdf = false;
         doc.save('Reporte-QBerries.pdf');
     }
 }
@@ -617,7 +612,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const firmaFotoInput = document.getElementById('rep_firma_foto');
     const firmaFotoNombre = document.getElementById('rep_firma_foto_nombre');
     if (btnPdf) {
-        btnPdf.addEventListener('click', (e) => { generarPDFReporte(e.currentTarget); });
+        btnPdf.addEventListener('click', (e) => {
+            if (Date.now() < bloquearAperturaPdfHasta) return;
+            if (modalPdfAbierto || generandoPdf) return;
+            generarPDFReporte(e.currentTarget);
+        });
     }
     if (firmaFotoInput) {
         firmaFotoInput.addEventListener('change', () => {

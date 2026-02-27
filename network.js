@@ -294,20 +294,34 @@ export function initReporteForm() {
         const btnText = btn.querySelector('.btn-guardar-text');
         const spinner = document.getElementById('spinner_guardar');
         const hasSwal = typeof Swal !== 'undefined';
+        let alertaGuardarTimer = null;
+        let alertaGuardarAbierta = false;
         function abrirAlertaGuardando() {
             if (!hasSwal) return;
-            Swal.fire({
-                title: 'Espere un momento',
-                text: 'Se esta guardando la informacion...',
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                showConfirmButton: false,
-                didOpen: () => { Swal.showLoading(); }
-            });
+            alertaGuardarTimer = setTimeout(() => {
+                const focusedEl = document.activeElement;
+                if (focusedEl && typeof focusedEl.blur === 'function') focusedEl.blur();
+                Swal.fire({
+                    title: 'Espere un momento',
+                    text: 'Se esta guardando la informacion...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        alertaGuardarAbierta = true;
+                        Swal.showLoading();
+                    },
+                    willClose: () => { alertaGuardarAbierta = false; }
+                });
+            }, 450);
         }
         function cerrarAlertaGuardando() {
             if (!hasSwal) return;
-            if (Swal.isVisible()) Swal.close();
+            if (alertaGuardarTimer) {
+                clearTimeout(alertaGuardarTimer);
+                alertaGuardarTimer = null;
+            }
+            if (alertaGuardarAbierta && Swal.isVisible()) Swal.close();
         }
         btn.disabled = true;
         btnText.textContent = 'Enviando...';
