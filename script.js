@@ -91,8 +91,31 @@ function getVal(id) {
 }
 
 async function generarPDFReporte(openerEl) {
+    const hasSwal = typeof Swal !== 'undefined';
+    const hasPhotoForPdf = ['rep_foto_descripcion', 'rep_foto_accion', 'rep_foto_recomendacion']
+        .some(id => {
+            const el = document.getElementById(id);
+            return !!(el && el.files && el.files[0]);
+        });
+    if (hasSwal) {
+        Swal.fire({
+            title: 'Espere un momento',
+            text: hasPhotoForPdf
+                ? 'Procesando calidad de imagen para el PDF. Por favor espere...'
+                : 'Generando PDF. Por favor espere...',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+    }
+    function cerrarAlertaPdf() {
+        if (hasSwal && Swal.isVisible()) Swal.close();
+    }
+
     var JsPDF = window.jspdf && window.jspdf.jsPDF;
     if (!JsPDF) {
+        cerrarAlertaPdf();
         if (typeof Swal !== 'undefined') Swal.fire({ title: 'Error', text: 'No se pudo cargar la librería PDF.', icon: 'error', confirmButtonColor: '#27ae60' });
         else alert('No se pudo cargar la librería PDF.');
         return;
@@ -530,9 +553,10 @@ async function generarPDFReporte(openerEl) {
         var btnCerrar = document.getElementById('modal-pdf-cerrar');
         var focusBackEl = openerEl || document.activeElement;
         if (modal && iframe) {
+            cerrarAlertaPdf();
             if (window._pdfBlobUrl) URL.revokeObjectURL(window._pdfBlobUrl);
             window._pdfBlobUrl = url;
-            iframe.src = url;
+            iframe.src = url + '#page=1&zoom=page-width';
             if (linkDescarga) {
                 linkDescarga.href = url;
                 linkDescarga.download = 'Reporte-QBerries.pdf';
@@ -563,9 +587,11 @@ async function generarPDFReporte(openerEl) {
             if (btnCerrar) btnCerrar.onclick = cerrarModalPdf;
             modal.onclick = function (e) { if (e.target === modal) cerrarModalPdf(); };
         } else {
+            cerrarAlertaPdf();
             window.open(URL.createObjectURL(blob), '_blank');
         }
     } catch (e) {
+        cerrarAlertaPdf();
         doc.save('Reporte-QBerries.pdf');
     }
 }
@@ -636,6 +662,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeBtn && sidebar) {
         closeBtn.addEventListener('click', () => sidebar.classList.remove('active'));
     }
+    // Cerrar sidebar al tocar fuera (móvil y desktop)
+    document.addEventListener('click', (e) => {
+        if (!sidebar || !sidebar.classList.contains('active')) return;
+        const clickedInsideSidebar = sidebar.contains(e.target);
+        const clickedMenuBtn = menuBtn && menuBtn.contains(e.target);
+        if (!clickedInsideSidebar && !clickedMenuBtn) {
+            sidebar.classList.remove('active');
+        }
+    });
 
     function renderHistorialTable() {
         const tbody = document.getElementById('historial-tabla-body');

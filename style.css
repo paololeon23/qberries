@@ -2018,6 +2018,26 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     display: block;
 }
 
+@media (max-width: 768px) {
+    .modal-pdf-overlay {
+        padding: 10px;
+    }
+    .modal-pdf-content {
+        max-height: 97vh;
+        border-radius: 10px;
+    }
+    .modal-pdf-header {
+        padding: 10px 12px;
+    }
+    .modal-pdf-header h3 {
+        font-size: 1rem;
+    }
+    .modal-pdf-iframe {
+        height: 82vh;
+        min-height: 0;
+    }
+}
+
 /* Footer: Reportante y Firma, fila a fila (uno debajo del otro) */
 .reporte-qberries .form-footer-qb {
     display: grid;
