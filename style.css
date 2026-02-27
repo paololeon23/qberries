@@ -1926,6 +1926,86 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     background: #1e8449;
 }
 
+/* Modal PDF: misma página, ver y descargar */
+.modal-pdf-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.modal-pdf-overlay.modal-pdf-abierto {
+    display: flex;
+}
+.modal-pdf-content {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    width: 100%;
+    max-width: 900px;
+    max-height: 95vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.25);
+}
+.modal-pdf-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 18px;
+    background: #2c3e50;
+    color: #fff;
+}
+.modal-pdf-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+.modal-pdf-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.btn-descargar-pdf {
+    padding: 8px 18px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--qberries-green);
+    border-radius: 8px;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+.btn-descargar-pdf:hover {
+    background: #1e8449;
+    color: #fff;
+}
+.modal-pdf-cerrar {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #2c3e50;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.modal-pdf-cerrar:hover {
+    background: #f0f0f0;
+}
+.modal-pdf-iframe {
+    width: 100%;
+    height: 75vh;
+    min-height: 400px;
+    border: none;
+    display: block;
+}
+
 /* Footer: Reportante y Firma, fila a fila (uno debajo del otro) */
 .reporte-qberries .form-footer-qb {
     display: grid;
@@ -1971,6 +2051,58 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 .reporte-qberries .btn-guardar-qb:active { transform: translateY(0); }
 
+.reporte-qberries .btn-ver-pdf-qb {
+    display: block;
+    margin: 16px auto 0;
+    padding: 12px 24px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #2c3e50;
+    background: #fff;
+    border: 1px solid var(--qberries-green);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+.reporte-qberries .btn-ver-pdf-qb:hover {
+    background: #e8f5e9;
+    color: #1e8449;
+}
+
+.reporte-qberries .form-actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+.reporte-qberries .form-actions-row .btn-guardar-qb {
+    margin-top: 0;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.reporte-qberries .form-actions-row .btn-ver-pdf-qb {
+    margin: 0;
+}
+
+.reporte-qberries .btn-pdf-icon-only {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.reporte-qberries .btn-pdf-icon-only svg,
+.reporte-qberries .btn-pdf-icon-only i {
+    width: 20px;
+    height: 20px;
+}
+
 /* Título/subtítulo ya no se usan (evitar duplicado con el header de página) */
 
 /* Contenedor del reporte */
@@ -1982,3 +2114,4 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     max-width: 900px;
     margin: 0 auto;
 }
+

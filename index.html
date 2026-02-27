@@ -178,10 +178,15 @@
                 </div>
             </div>
 
-            <button type="button" id="btn-guardar-registro" class="btn-guardar-qb">
-                <span class="btn-guardar-text">GUARDAR REPORTE</span>
-                <span id="spinner_guardar" class="loading-spinner btn-spinner" style="display: none;"></span>
-            </button>
+            <div class="form-actions-row">
+                <button type="button" id="btn-guardar-registro" class="btn-guardar-qb">
+                    <span class="btn-guardar-text">GUARDAR REPORTE</span>
+                    <span id="spinner_guardar" class="loading-spinner btn-spinner" style="display: none;"></span>
+                </button>
+                <button type="button" id="btn-ver-pdf" class="btn-ver-pdf-qb btn-pdf-icon-only" aria-label="Ver PDF">
+                    <i data-lucide="file-text" aria-hidden="true"></i>
+                </button>
+            </div>
         </form>
 
         <!-- Modal para ver la foto -->
@@ -189,6 +194,20 @@
             <div class="modal-foto-content">
                 <img id="modal-foto-img" src="" alt="Foto">
                 <button type="button" class="modal-foto-cerrar" aria-label="Cerrar">Cerrar</button>
+            </div>
+        </div>
+
+        <!-- Modal Ver PDF (misma página, descargar dentro) -->
+        <div id="modal-pdf-ver" class="modal-pdf-overlay" aria-hidden="true" style="display: none;">
+            <div class="modal-pdf-content">
+                <div class="modal-pdf-header">
+                    <h3>Vista previa del reporte (PDF)</h3>
+                    <div class="modal-pdf-actions">
+                        <a id="modal-pdf-descargar" href="#" download="Reporte-QBerries.pdf" class="btn-descargar-pdf">Descargar PDF</a>
+                        <button type="button" id="modal-pdf-cerrar" class="modal-pdf-cerrar" aria-label="Cerrar">Cerrar</button>
+                    </div>
+                </div>
+                <iframe id="modal-pdf-iframe" title="Vista previa PDF" class="modal-pdf-iframe"></iframe>
             </div>
         </div>
 

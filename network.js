@@ -255,9 +255,26 @@ export function initReporteForm() {
         let payloadConFotos = null;
         const btnText = btn.querySelector('.btn-guardar-text');
         const spinner = document.getElementById('spinner_guardar');
+        const hasSwal = typeof Swal !== 'undefined';
+        function abrirAlertaGuardando() {
+            if (!hasSwal) return;
+            Swal.fire({
+                title: 'Espere un momento',
+                text: 'Se esta guardando la informacion...',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+        }
+        function cerrarAlertaGuardando() {
+            if (!hasSwal) return;
+            if (Swal.isVisible()) Swal.close();
+        }
         btn.disabled = true;
         btnText.textContent = 'Enviando...';
         if (spinner) spinner.style.display = 'inline-block';
+        abrirAlertaGuardando();
         Promise.all([
             leerArchivoComoBase64(document.getElementById('rep_foto_descripcion')),
             leerArchivoComoBase64(document.getElementById('rep_foto_accion')),
@@ -273,6 +290,7 @@ export function initReporteForm() {
                 btn.disabled = false;
                 btnText.textContent = 'GUARDAR REPORTE';
                 if (spinner) spinner.style.display = 'none';
+                cerrarAlertaGuardando();
                 if (typeof Swal !== 'undefined') Swal.fire({ title: 'Guardado localmente', text: 'Se enviará cuando haya conexión. Revisa "Pendientes" en el encabezado.', icon: 'success', confirmButtonColor: '#27ae60' });
                 else alert('Guardado localmente. Se enviará cuando haya conexión.');
                 form.reset();
@@ -291,6 +309,7 @@ export function initReporteForm() {
             btnText.textContent = 'GUARDAR REPORTE';
             if (spinner) spinner.style.display = 'none';
             if (resp && resp.offline) return;
+            cerrarAlertaGuardando();
             addHistorialEntry();
             if (typeof Swal !== 'undefined') Swal.fire({ title: 'Guardado', text: 'Reporte y fotos enviados correctamente.', icon: 'success', confirmButtonColor: '#27ae60' });
             else alert('Reporte enviado correctamente.');
@@ -301,6 +320,7 @@ export function initReporteForm() {
             btn.disabled = false;
             btnText.textContent = 'GUARDAR REPORTE';
             if (spinner) spinner.style.display = 'none';
+            cerrarAlertaGuardando();
             addPendingReporte(payloadConFotos || buildPayloadReporte());
             updateUI();
             if (typeof Swal !== 'undefined') Swal.fire({ title: 'Guardado localmente', text: 'No hay conexión. El reporte quedó pendiente y se enviará cuando haya internet.', icon: 'success', confirmButtonColor: '#27ae60' });
@@ -310,6 +330,7 @@ export function initReporteForm() {
             setFechaHoy();
         });
     });
+
 }
 
 /** Envía los reportes pendientes cuando hay conexión (se llama al volver online) */
