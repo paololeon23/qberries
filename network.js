@@ -145,6 +145,11 @@ export function initReporteForm() {
     const btn = document.getElementById('btn-guardar-registro');
     if (!form || !form.classList.contains('reporte-qberries') || !btn) return;
 
+    var fechaInput = document.getElementById('rep_fecha');
+    if (fechaInput && !fechaInput.value) {
+        fechaInput.value = new Date().toISOString().slice(0, 10);
+    }
+
     const fotoNombreIds = ['rep_foto_nombre_descripcion', 'rep_foto_nombre_accion', 'rep_foto_nombre_recomendacion'];
     const fileInputIds = ['rep_foto_descripcion', 'rep_foto_accion', 'rep_foto_recomendacion'];
     for (let i = 0; i < fileInputIds.length; i++) {
@@ -194,6 +199,10 @@ export function initReporteForm() {
             }
         });
     }
+    function setFechaHoy() {
+        var el = document.getElementById('rep_fecha');
+        if (el) el.value = new Date().toISOString().slice(0, 10);
+    }
 
     btn.addEventListener('click', function () {
         if (!form.checkValidity()) { form.reportValidity(); return; }
@@ -228,6 +237,7 @@ export function initReporteForm() {
                 else alert('Guardado localmente. Se enviará cuando haya conexión.');
                 form.reset();
                 limpiarFotos();
+                setFechaHoy();
                 return Promise.resolve({ offline: true });
             }
             return fetch(REPORTE_WEB_APP_URL, {
@@ -246,6 +256,7 @@ export function initReporteForm() {
             else alert('Reporte enviado correctamente.');
             form.reset();
             limpiarFotos();
+            setFechaHoy();
         }).catch(() => {
             btn.disabled = false;
             btnText.textContent = 'GUARDAR REPORTE';
@@ -256,6 +267,7 @@ export function initReporteForm() {
             else alert('Guardado localmente. Se enviará cuando haya conexión.');
             form.reset();
             limpiarFotos();
+            setFechaHoy();
         });
     });
 }
