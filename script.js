@@ -3,12 +3,13 @@
  * La lógica del formulario de reporte (buildPayload, fotos, POST) está en network.js (initReporteForm).
  * SweetAlert se usa desde network.js para mensajes de guardado/error; aquí solo se inicializa lo que toca a la UI.
  */
-import { updateUI, initReporteForm, getHistorialEntries } from './network.js';
+import { updateUI, initReporteForm, getHistorialEntries, enviarPendientes } from './network.js';
 
-// Estado de conexión y reintentos
+// Estado de conexión y contador de pendientes
 updateUI();
-window.addEventListener('online', () => updateUI());
+window.addEventListener('online', () => { updateUI(); enviarPendientes(); });
 window.addEventListener('offline', () => updateUI());
+window.addEventListener('pending-updated', () => updateUI());
 
 /** Devuelve true si el formulario de reporte tiene al menos un campo con datos (para avisar antes de refrescar/salir) */
 function formTieneDatos() {

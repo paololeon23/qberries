@@ -3,6 +3,35 @@
 export const REPORTE_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyRm-mlBVvX6r5eXkNXK-95K1LiaP2aj7AgM7zJurb7bi-nixVWkrTs-fcAiSfkZB7n/exec";
 
 const HISTORIAL_KEY = 'reporte_historial';
+const PENDING_KEY = 'reporte_pendientes';
+
+function getPendingReportes() {
+    try {
+        const raw = localStorage.getItem(PENDING_KEY);
+        if (!raw) return [];
+        const arr = JSON.parse(raw);
+        return Array.isArray(arr) ? arr : [];
+    } catch (_) { return []; }
+}
+
+function setPendingReportes(arr) {
+    try {
+        localStorage.setItem(PENDING_KEY, JSON.stringify(arr));
+        window.dispatchEvent(new CustomEvent('pending-updated'));
+    } catch (_) {}
+}
+
+function addPendingReporte(payload) {
+    const list = getPendingReportes();
+    list.push({ payload, addedAt: Date.now() });
+    setPendingReportes(list);
+}
+
+function removePendingReporteAtIndex(index) {
+    const list = getPendingReportes();
+    list.splice(index, 1);
+    setPendingReportes(list);
+}
 
 function getDeviceName() {
     const ua = navigator.userAgent || '';
@@ -39,13 +68,13 @@ export function addHistorialEntry() {
     } catch (_) {}
 }
 
-// Actualiza el card En línea / Sin conexión
+// Actualiza el card En línea / Sin conexión y el contador de pendientes
 export function updateUI() {
     const statusText = document.getElementById("status-text");
     const statusCard = document.getElementById("network-status-container");
     const countText = document.getElementById("pending-count");
-
-    if (countText) countText.textContent = "Pendientes: 0";
+    const pending = getPendingReportes().length;
+    if (countText) countText.textContent = "Pendientes: " + pending;
 
     if (navigator.onLine) {
         if (statusText) statusText.textContent = "En línea";
@@ -174,6 +203,7 @@ export function initReporteForm() {
             return;
         }
         const payload = buildPayloadReporte();
+        let payloadConFotos = null;
         const btnText = btn.querySelector('.btn-guardar-text');
         const spinner = document.getElementById('spinner_guardar');
         btn.disabled = true;
@@ -187,17 +217,30 @@ export function initReporteForm() {
             if (arr[0]) payload.rep_foto_descripcion_base64 = arr[0];
             if (arr[1]) payload.rep_foto_accion_base64 = arr[1];
             if (arr[2]) payload.rep_foto_recomendacion_base64 = arr[2];
-            console.log('POST al servidor:', payload);
+            payloadConFotos = { ...payload };
+            if (!navigator.onLine) {
+                addPendingReporte(payload);
+                updateUI();
+                btn.disabled = false;
+                btnText.textContent = 'GUARDAR REPORTE';
+                if (spinner) spinner.style.display = 'none';
+                if (typeof Swal !== 'undefined') Swal.fire({ title: 'Guardado localmente', text: 'Se enviará cuando haya conexión. Revisa "Pendientes" en el encabezado.', icon: 'success', confirmButtonColor: '#27ae60' });
+                else alert('Guardado localmente. Se enviará cuando haya conexión.');
+                form.reset();
+                limpiarFotos();
+                return Promise.resolve({ offline: true });
+            }
             return fetch(REPORTE_WEB_APP_URL, {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
                 body: JSON.stringify(payload)
             });
-        }).then(() => {
+        }).then((resp) => {
             btn.disabled = false;
             btnText.textContent = 'GUARDAR REPORTE';
             if (spinner) spinner.style.display = 'none';
+            if (resp && resp.offline) return;
             addHistorialEntry();
             if (typeof Swal !== 'undefined') Swal.fire({ title: 'Guardado', text: 'Reporte y fotos enviados correctamente.', icon: 'success', confirmButtonColor: '#27ae60' });
             else alert('Reporte enviado correctamente.');
@@ -207,8 +250,36 @@ export function initReporteForm() {
             btn.disabled = false;
             btnText.textContent = 'GUARDAR REPORTE';
             if (spinner) spinner.style.display = 'none';
-            if (typeof Swal !== 'undefined') Swal.fire({ title: 'Error', text: 'Error de red o servidor.', icon: 'error', confirmButtonColor: '#27ae60' });
-            else alert('Error de red.');
+            addPendingReporte(payloadConFotos || buildPayloadReporte());
+            updateUI();
+            if (typeof Swal !== 'undefined') Swal.fire({ title: 'Guardado localmente', text: 'No hay conexión. El reporte quedó pendiente y se enviará cuando haya internet.', icon: 'success', confirmButtonColor: '#27ae60' });
+            else alert('Guardado localmente. Se enviará cuando haya conexión.');
+            form.reset();
+            limpiarFotos();
         });
     });
+}
+
+/** Envía los reportes pendientes cuando hay conexión (se llama al volver online) */
+export async function enviarPendientes() {
+    if (!navigator.onLine) return;
+    const list = getPendingReportes();
+    if (list.length === 0) return;
+    for (let i = list.length - 1; i >= 0; i--) {
+        const { payload } = list[i];
+        try {
+            await fetch(REPORTE_WEB_APP_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+                body: JSON.stringify(payload)
+            });
+            removePendingReporteAtIndex(i);
+            addHistorialEntry();
+            updateUI();
+        } catch (_) {
+            break;
+        }
+    }
+    updateUI();
 }
