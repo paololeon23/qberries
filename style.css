@@ -126,6 +126,13 @@ body {
         min-height: 44px;
         padding: 10px 12px;
     }
+    .reporte-qberries .rep-fecha-wrap {
+        min-height: 44px;
+    }
+    .reporte-qberries .rep-fecha-display {
+        font-size: 16px;
+        padding: 10px 44px 10px 12px;
+    }
 }
 
 .sidebar ul li a {
@@ -1728,6 +1735,58 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     width: 100%;
     max-width: 100%;
     margin: 0;
+}
+
+/* Fecha: formato visible "27 feb. 2026" en azul + icono calendario (celular y computadora) */
+.reporte-qberries .rep-fecha-wrap {
+    position: relative;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--qberries-border);
+    border-radius: 4px;
+    background: #fff;
+    min-height: 38px;
+}
+.reporte-qberries .rep-fecha-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+    margin: 0;
+    padding: 0;
+}
+.reporte-qberries .rep-fecha-display {
+    display: block;
+    padding: 8px 40px 8px 10px;
+    font-size: 0.95rem;
+    color: #999;
+    pointer-events: none;
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
+}
+.reporte-qberries .rep-fecha-wrap.has-value .rep-fecha-display {
+    color: #2c3e50;
+}
+.reporte-qberries .rep-fecha-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
+    color: #999;
+    pointer-events: none;
+    z-index: 1;
+}
+.reporte-qberries .rep-fecha-wrap.has-value .rep-fecha-icon {
+    color: #2c3e50;
 }
 
 /* Áreas de texto con etiqueta FOTO */

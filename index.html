@@ -76,7 +76,11 @@
 
             <div class="field-row">
                 <label>FECHA</label>
-                <input type="date" id="rep_fecha" name="rep_fecha" required>
+                <div class="rep-fecha-wrap">
+                    <input type="date" id="rep_fecha" name="rep_fecha" required class="rep-fecha-input">
+                    <span id="rep_fecha_display" class="rep-fecha-display" aria-hidden="true">dd/mm/aaaa</span>
+                    <i data-lucide="calendar" class="rep-fecha-icon" aria-hidden="true"></i>
+                </div>
             </div>
 
             <div class="field-row">

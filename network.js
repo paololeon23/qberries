@@ -146,8 +146,37 @@ export function initReporteForm() {
     if (!form || !form.classList.contains('reporte-qberries') || !btn) return;
 
     var fechaInput = document.getElementById('rep_fecha');
+    var fechaDisplay = document.getElementById('rep_fecha_display');
+    var fechaWrap = fechaInput && fechaInput.closest('.rep-fecha-wrap');
+    var meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    function actualizarDisplayFecha() {
+        if (!fechaInput || !fechaDisplay || !fechaWrap) return;
+        var v = (fechaInput.value || '').trim();
+        if (!v) {
+            fechaDisplay.textContent = 'dd/mm/aaaa';
+            fechaWrap.classList.remove('has-value');
+            return;
+        }
+        var parts = v.split('-');
+        if (parts.length !== 3) { fechaDisplay.textContent = 'dd/mm/aaaa'; fechaWrap.classList.remove('has-value'); return; }
+        var d = parseInt(parts[2], 10);
+        var m = parseInt(parts[1], 10) - 1;
+        var y = parts[0];
+        if (m >= 0 && m < 12) {
+            fechaDisplay.textContent = d + ' ' + meses[m] + '. ' + y;
+            fechaWrap.classList.add('has-value');
+        } else {
+            fechaDisplay.textContent = v;
+            fechaWrap.classList.add('has-value');
+        }
+    }
     if (fechaInput && !fechaInput.value) {
         fechaInput.value = new Date().toISOString().slice(0, 10);
+    }
+    actualizarDisplayFecha();
+    if (fechaInput) {
+        fechaInput.addEventListener('change', actualizarDisplayFecha);
+        fechaInput.addEventListener('input', actualizarDisplayFecha);
     }
 
     const fotoNombreIds = ['rep_foto_nombre_descripcion', 'rep_foto_nombre_accion', 'rep_foto_nombre_recomendacion'];
@@ -201,7 +230,10 @@ export function initReporteForm() {
     }
     function setFechaHoy() {
         var el = document.getElementById('rep_fecha');
-        if (el) el.value = new Date().toISOString().slice(0, 10);
+        if (el) {
+            el.value = new Date().toISOString().slice(0, 10);
+            if (typeof actualizarDisplayFecha === 'function') actualizarDisplayFecha();
+        }
     }
 
     btn.addEventListener('click', function () {
