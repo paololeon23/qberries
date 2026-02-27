@@ -6,7 +6,7 @@
 import { updateUI, initReporteForm, getHistorialEntries, enviarPendientes } from './network.js';
 
 // Estado de conexión y contador de pendientes
-updateUI();
+                        updateUI();
 window.addEventListener('online', () => { updateUI(); enviarPendientes(); });
 window.addEventListener('offline', () => updateUI());
 window.addEventListener('pending-updated', () => updateUI());
@@ -23,7 +23,7 @@ function formTieneDatos() {
             return true;
         }
     }
-    return false;
+            return false;
 }
 
 window.addEventListener('beforeunload', (e) => {
@@ -40,7 +40,7 @@ if ('serviceWorker' in navigator && !window.location.hostname.match(/127\.0\.0\.
 document.addEventListener('DOMContentLoaded', () => {
     initReporteForm();
 
-    if (window.lucide) lucide.createIcons();
+        if (window.lucide) lucide.createIcons();
 
     const form = document.getElementById('seguridad-form');
     if (form) {
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (entries.length === 0) {
             if (sinDatos) sinDatos.style.display = 'block';
             if (wrapper) wrapper.style.display = 'none';
-        } else {
+                } else {
             if (sinDatos) sinDatos.style.display = 'none';
             if (wrapper) wrapper.style.display = 'block';
             entries.forEach(e => {

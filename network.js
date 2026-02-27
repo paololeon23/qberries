@@ -178,12 +178,12 @@ export function initReporteForm() {
         fechaInput.addEventListener('change', actualizarDisplayFecha);
         fechaInput.addEventListener('input', actualizarDisplayFecha);
     }
-    var fechaIcon = fechaWrap && fechaWrap.querySelector('.rep-fecha-icon');
-    if (fechaIcon && fechaInput) {
-        fechaIcon.addEventListener('click', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            fechaInput.click();
+    var fechaLabel = fechaWrap && fechaWrap.querySelector('.rep-fecha-icon-wrap');
+    if (fechaLabel && fechaInput) {
+        fechaLabel.addEventListener('click', function () {
+            if (typeof fechaInput.showPicker === 'function') {
+                try { fechaInput.showPicker(); } catch (_) {}
+            }
         });
     }
 

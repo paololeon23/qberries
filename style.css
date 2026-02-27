@@ -1772,19 +1772,33 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .reporte-qberries .rep-fecha-wrap.has-value .rep-fecha-display {
     color: #2c3e50;
 }
-.reporte-qberries .rep-fecha-icon {
+.reporte-qberries .rep-fecha-icon-wrap {
     position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 20px;
-    height: 20px;
-    min-width: 20px;
-    min-height: 20px;
-    color: #999;
-    pointer-events: auto;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     z-index: 3;
+}
+.reporte-qberries .rep-fecha-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    min-height: 22px;
+    color: #999;
+    pointer-events: none;
+}
+.reporte-qberries .rep-fecha-icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 .reporte-qberries .rep-fecha-wrap.has-value .rep-fecha-icon {
     color: #2c3e50;
